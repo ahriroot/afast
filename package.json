@@ -1,0 +1,17 @@
+{
+  "name": "afast-ts",
+  "module": "index.ts",
+  "type": "module",
+  "main": "afast/index.ts",
+  "types": "afast/types.d.ts",
+  "devDependencies": {
+    "@types/pg": "^8.10.9",
+    "bun-types": "^1.0.18"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "pg": "^8.11.3"
+  }
+}
