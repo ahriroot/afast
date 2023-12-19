@@ -105,13 +105,6 @@ class TestView implements View {
 
 const v = new TestView()
 
-// console.log(await v.model.request_primary(1))
-// console.log(await v.model.request_get(1, 10))
-// console.log(await v.model.request_get(1, 10, ['id', '-name']))
-// console.log(await v.model.request_post({ name: 'ahri', age: 12, username: 'ahriknow', password: 'password' }))
-// console.log(await v.model.request_put(1, { name: 'ahri', age: 12, username: 'ahriknow', password: 'password' }))
-// console.log(await v.model.request_delete(1))
-
 g.view('/world4', v)
 
 console.log(app.map())

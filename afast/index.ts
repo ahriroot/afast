@@ -1,4 +1,3 @@
-import { Pool } from 'pg'
 import DBPool from './db'
 import { Model } from './model'
 
@@ -8,7 +7,7 @@ export type Config = {
     host?: string
     port?: number
     dev?: boolean
-    dialect?: 'sqlite' | 'pg'
+    dialect?: 'sqlite' | 'pg' | 'mysql'
     database?: any
 }
 
@@ -274,6 +273,32 @@ class App {
         return await this.root.index(paths, {})
     }
 
+    /**
+     * @param config <afast.Config { port?: number, host?: string, dev?: boolean, dialect?: 'sqlite' | 'pg' | 'mysql, database?: any}> config
+     * @returns <Bun.Server> server
+     * @description Run http server
+     * ```typescript
+     * const config: Config = {
+     *    port: 3000,
+     *    host: 'localhost',
+     *    dialect: 'sqlite', // sqlite pg mysql
+     *    database: {
+     *        path: './test.db',
+     *    },
+     *    // database: {
+     *        // host: '127.0.0.1',
+     *        // port: 5432,
+     *        // user: 'postgres',
+     *        // pass: '',
+     *        // name: 'afast',
+     *    // },
+     * }
+     * 
+     * const server = app.run(config)
+     * 
+     * console.log(`Listening on ${server.url}`)
+     * ```
+     */
     run(
         config: Config = {
             port: 3000,
@@ -428,6 +453,32 @@ class App {
     }
 }
 
+/**
+ * @param config <afast.Config { port?: number, host?: string, dev?: boolean, dialect?: 'sqlite' | 'pg' | 'mysql, database?: any}> config
+ * @param models <afast.Model[]> models
+ * @param drop <boolean> drop table before migrate
+ * @returns <Promise<any[]>> sql execute results
+ * @description Migrate database
+ * ```typescript
+ * const config: Config = {
+ *    port: 3000,
+ *    host: 'localhost',
+ *    dialect: 'sqlite', // sqlite pg mysql
+ *    database: {
+ *        path: './test.db',
+ *    },
+ *    // database: {
+ *        // host: '127.0.0.1',
+ *        // port: 5432,
+ *        // user: 'postgres',
+ *        // pass: '',
+ *        // name: 'afast',
+ *    // },
+ * }
+ * 
+ * await migrate(config, [TestModel], true)
+ * ```
+ */
 const migrate = async (config: Config, models: (typeof Model)[], drop: boolean = false): Promise<any[]> => {
     if (config.dialect && ['sqlite', 'pg'].includes(config.dialect)) {
         global.dialect = require(`./dialect/${config.dialect}`).default
