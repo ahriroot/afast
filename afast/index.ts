@@ -13,13 +13,16 @@ export type Config = {
 }
 
 export class ARequest {
+    request: Request
     method: string
     url: URL
     headers: { [x: string]: any }
     query: { [x: string]: any }
     params: { [x: string]: any }
     local: { [x: string]: any } = {}
+    body: any
     constructor(request: Request, params: { [x: string]: any } = {}) {
+        this.request = request
         this.url = new URL(request.url)
         this.method = request.method
         let headers: { [x: string]: any } = {}
@@ -33,6 +36,15 @@ export class ARequest {
         }
         this.query = query
         this.params = params
+    }
+
+    async parseBody() {
+        const contentType = this.headers['content-type']
+        if (contentType && contentType.includes('application/json') && this.request.body) {
+            this.body = await this.request.json()
+        } else {
+            this.body = await this.request.text()
+        }
     }
 
     setParams(params: { [x: string]: any }) {
@@ -275,9 +287,7 @@ class App {
             if (config.database) {
                 if (config.dialect && ['sqlite', 'pg'].includes(config.dialect)) {
                     global.dialect = require(`./dialect/${config.dialect}`).default
-                    if (config.database) {
-                        global.pool = new DBPool(config.dialect, config.database)
-                    }
+                    global.pool = new DBPool(config.dialect, config.database)
                 }
             }
         }
@@ -287,6 +297,7 @@ class App {
             development: config.dev,
             fetch: async (request: Request, server) => {
                 let req = new ARequest(request)
+                await req.parseBody()
                 const r = await this.index(req.url.pathname.split('/').filter((x) => x !== ''))
                 if (!r) {
                     return new Response('Not Found', { status: 404 })
@@ -308,6 +319,12 @@ class App {
                         const views = router.views
                         const funcName = req.method.toLowerCase()
                         func = Object.getOwnPropertyDescriptor(views.view.constructor.prototype, funcName)?.value
+
+                        middlewares = views.middlewares
+                        for (const middleware of middlewares) {
+                            req = await middleware.request(req)
+                        }
+
                         if (!func) {
                             const allowed = views.view.allowed
                             if (allowed.includes(req.method)) {
@@ -318,24 +335,40 @@ class App {
                                         if (req.params.primary) {
                                             json = await model.request_primary(req.params.primary)
                                         } else {
-                                            json = await model.request_get(1, 10)
+                                            json = await model.request_get(
+                                                req.query.page || 1,
+                                                req.query.size || 10,
+                                                req.query.sorts ? req.query.sorts.split(',') : []
+                                            )
                                         }
                                         break
                                     case 'POST':
-                                        json = await model.request_post(model)
+                                        json = await model.request_post(req.body)
                                         break
                                     case 'PUT':
-                                        json = await model.request_put(1, {})
+                                        if (req.params.primary === undefined) {
+                                            return new Response('Not Found', { status: 404 })
+                                        }
+                                        json = await model.request_put(req.params.primary, req.body)
                                         break
                                     case 'PATCH':
-                                        json = await model.request_put(1, {})
+                                        if (req.params.primary === undefined) {
+                                            return new Response('Not Found', { status: 404 })
+                                        }
+                                        json = await model.request_put(req.params.primary, req.body)
                                         break
                                     case 'DELETE':
-                                        json = await model.request_delete(model)
+                                        if (req.params.primary === undefined) {
+                                            return new Response('Not Found', { status: 404 })
+                                        }
+                                        json = await model.request_delete(req.params.primary)
                                         break
                                 }
-                                console.log(json)
-                                return new Response(JSON.stringify({ sql: json }), {
+                                for (let i = middlewares.length - 1; i >= 0; i--) {
+                                    const middleware = middlewares[i]
+                                    json = await middleware.response(req, json)
+                                }
+                                return new Response(JSON.stringify(json || null), {
                                     headers: {
                                         'Content-Type': 'application/json',
                                     },
@@ -343,7 +376,6 @@ class App {
                             }
                             return new Response('Method Not Allowed', { status: 405 })
                         }
-                        middlewares = views.middlewares
                     }
                 } else {
                     func = handler.handler
@@ -396,7 +428,7 @@ class App {
     }
 }
 
-const migrate = async (config: Config, models: (typeof Model)[], drop: boolean = false): Promise<void> => {
+const migrate = async (config: Config, models: (typeof Model)[], drop: boolean = false): Promise<any[]> => {
     if (config.dialect && ['sqlite', 'pg'].includes(config.dialect)) {
         global.dialect = require(`./dialect/${config.dialect}`).default
         if (config.database) {
@@ -404,10 +436,14 @@ const migrate = async (config: Config, models: (typeof Model)[], drop: boolean =
         }
     }
 
-    models.forEach(async (model) => {
+    const results: any[] = []
+
+    for (const model of models) {
         const obj = new model()
-        await obj.migrate(global.pool, drop)
-    })
+        results.push(await obj.migrate(global.pool, drop))
+    }
+
+    return results
 }
 
 export default App

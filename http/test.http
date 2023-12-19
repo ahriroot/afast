@@ -1,0 +1,34 @@
+
+
+### GET
+GET http://127.0.0.1:3000/hello/world4
+Content-Type: application/json
+
+
+### POST
+POST http://127.0.0.1:3000/hello/world4
+Content-Type: application/json
+
+{
+    "name": "ahriknow",
+    "age": 18,
+    "username": "username",
+    "password": "password"
+}
+
+
+### PUT
+PUT http://127.0.0.1:3000/hello/world4/1
+Content-Type: application/json
+
+{
+    "name": "ahriknow new",
+    "age": 22,
+    "username": "username new",
+    "password": "password new"
+}
+
+
+### DELETE
+DELETE http://127.0.0.1:3000/hello/world4/1
+Content-Type: application/json

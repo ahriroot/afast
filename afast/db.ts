@@ -26,15 +26,19 @@ class DBPool {
         return await this.db.exec(sql)
     }
 
-    async transaction_sqlite(sqls: string[]) {
-        const results: any[] = []
-        this.db.transaction(() => {
-            for (const sql of sqls) {
-                results.push(this.db.prepare(sql))
+    async transaction_sqlite(sqls: string[]): Promise<number> {
+        const tx = this.db.transaction((ss: string[]) => {
+            for (const sql of ss) {
+                this.db.exec(sql)
             }
-            return sqls.length
+            return ss.length
         })
-        return results
+        const count = tx(sqls)
+        return count
+    }
+
+    async query_sqlite(sql: string) {
+        return await this.db.prepare(sql).all()
     }
     // ======================= sqlite end =======================
 
@@ -63,6 +67,13 @@ class DBPool {
             client.release()
         }
     }
+
+    async query_pg(sql: string) {
+        const client = await this.db.connect()
+        const res = await client.query(sql)
+        client.release()
+        return res.rows
+    }
     // ======================= pg end =======================
 
     async exec(sql: string) {
@@ -73,12 +84,22 @@ class DBPool {
                 return await this.exec_pg(sql)
         }
     }
+
     async transaction(sqls: string[]) {
         switch (this.dialect) {
             case 'sqlite':
                 return await this.transaction_sqlite(sqls)
             case 'pg':
                 return await this.transaction_pg(sqls)
+        }
+    }
+
+    async query(sql: string) {
+        switch (this.dialect) {
+            case 'sqlite':
+                return await this.query_sqlite(sql)
+            case 'pg':
+                return await this.query_pg(sql)
         }
     }
 }

@@ -59,9 +59,9 @@ export class Model {
         const columns = this.getFields()
         const sql = global.dialect.create(this.table(), columns)
         if (drop) {
-            await client.transaction([`DROP TABLE IF EXISTS ${this.table()}`, sql])
+            return await client.transaction([`DROP TABLE IF EXISTS ${this.table()}`, sql])
         }
-        await client.exec(sql)
+        return await client.exec(sql)
     }
 
     async request_primary(primary: any) {
@@ -73,7 +73,8 @@ export class Model {
                 return column.name
             })
         const sql = `SELECT ${columns.join(', ')} FROM ${this.table()} WHERE id = ${primary}`
-        return sql
+        const res = await global.pool.query(sql)
+        return res.length > 0 ? res[0] : null
     }
 
     async request_get(page: number, size: number, sorts: string[] = []) {
@@ -105,10 +106,26 @@ export class Model {
             const sql = `SELECT ${columns.join(', ')} FROM ${this.table()} ORDER BY ${sortColumns.join(
                 ', '
             )} LIMIT ${limit} OFFSET ${offset}`
-            return sql
+            const res = await global.pool.query(sql)
+
+            const countSql = `SELECT COUNT(*) AS count FROM ${this.table()}`
+            const countRes = await global.pool.query(countSql)
+
+            return {
+                count: countRes[0].count,
+                resilt: res,
+            }
         } else {
             const sql = `SELECT ${columns.join(', ')} FROM ${this.table()} LIMIT ${limit} OFFSET ${offset}`
-            return sql
+            const res = await global.pool.query(sql)
+
+            const countSql = `SELECT COUNT(*) AS count FROM ${this.table()}`
+            const countRes = await global.pool.query(countSql)
+
+            return {
+                count: countRes[0].count,
+                resilt: res,
+            }
         }
     }
 
@@ -135,7 +152,10 @@ export class Model {
             }
         })
         const sql = `INSERT INTO ${this.table()} (${columns.join(', ')}) VALUES (${values.join(', ')})`
-        return sql
+
+        const res = await global.pool.exec(sql)
+
+        return res
     }
 
     async request_put(primary: any, body: { [x: string]: any }) {
@@ -160,12 +180,18 @@ export class Model {
             }
         })
         const sql = `UPDATE ${this.table()} SET ${columns.join(', ')} WHERE id = ${primary}`
-        return sql
+
+        const res = await global.pool.exec(sql)
+
+        return res
     }
 
     async request_delete(primary: any) {
         const sql = `DELETE FROM ${this.table()} WHERE id = ${primary}`
-        return sql
+
+        const res = await global.pool.exec(sql)
+
+        return res
     }
 }
 

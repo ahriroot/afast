@@ -55,7 +55,20 @@ class M2 {
     }
 }
 
-const g = app.group('/hello', [new M1()])
+class MRes {
+    async request(request: ARequest) {
+        return request
+    }
+
+    async response(request: ARequest, response: AResponse) {
+        return {
+            code: 10000,
+            msg: 'success',
+            data: response,
+        }
+    }
+}
+const g = app.group('/hello', [new MRes()])
 g.get(
     '/world3',
     async (request) => {
@@ -86,48 +99,44 @@ class TestModel extends Model {
 }
 
 class TestView implements View {
-    model: Model
-    allowed: string[]
-    constructor() {
-        this.model = new TestModel()
-        this.allowed = ['GET', 'POST']
-    }
+    model: Model = new TestModel()
+    allowed: string[] = ['GET', 'POST', 'PUT', 'DELETE']
 }
 
 const v = new TestView()
 
-console.log(await v.model.request_primary(1))
-console.log(await v.model.request_get(1, 10))
-console.log(await v.model.request_get(1, 10, ['id', '-name']))
-console.log(await v.model.request_post({ name: 'ahri', age: 12, username: 'ahriknow', password: 'password' }))
-console.log(await v.model.request_put(1, { name: 'ahri', age: 12, username: 'ahriknow', password: 'password' }))
-console.log(await v.model.request_delete(1))
+// console.log(await v.model.request_primary(1))
+// console.log(await v.model.request_get(1, 10))
+// console.log(await v.model.request_get(1, 10, ['id', '-name']))
+// console.log(await v.model.request_post({ name: 'ahri', age: 12, username: 'ahriknow', password: 'password' }))
+// console.log(await v.model.request_put(1, { name: 'ahri', age: 12, username: 'ahriknow', password: 'password' }))
+// console.log(await v.model.request_delete(1))
 
-g.view('/world4', v, [new M2()])
+g.view('/world4', v)
 
 console.log(app.map())
 
 const config: Config = {
     port: 3000,
     host: 'localhost',
-    // dialect: 'sqlite',
-    // database: {
-    //     path: './test.db',
-    // },
-    dialect: 'pg',
+    dialect: 'sqlite',
     database: {
-        host: '127.0.0.1',
-        port: 5432,
-        user: 'postgres',
-        pass: 'Aa12345.',
-        name: 'afast',
+        path: './test.db',
     },
+    // dialect: 'pg',
+    // database: {
+    //     host: '127.0.0.1',
+    //     port: 5432,
+    //     user: 'postgres',
+    //     pass: 'Aa12345.',
+    //     name: 'afast',
+    // },
 }
 
 console.log('migrate start')
-await migrate(config, [TestModel], true)
+console.log(await migrate(config, [TestModel], true))
 console.log('migrate end')
 
-// const server = app.run(config)
+const server = app.run(config)
 
-// console.log(`Listening on ${server.url}`)
+console.log(`Listening on ${server.url}`)
