@@ -132,24 +132,51 @@ class Router {
     }
 
     /**
-     * @param paths
-     * @param handler
-     * @param middlewares
-     * @returns
-     * @description
+     * Http request get method
+     * @param paths <string | string[]> request path
+     * @param handler <afast.Handler> routing handler
+     * @param middlewares <afast.Middleware[]> middleware
      */
     get(paths: string[] | string, handler: Handler, middlewares: Middleware[] = []) {
         return this.method('GET', paths, handler, middlewares)
     }
+
+    /**
+     * Http request post method
+     * @param paths <string | string[]> request path
+     * @param handler <afast.Handler> routing handler
+     * @param middlewares <afast.Middleware[]> middleware
+     */
     post(paths: string[] | string, handler: Handler, middlewares: Middleware[] = []) {
         return this.method('POST', paths, handler, middlewares)
     }
+
+    /**
+     * Http request put method
+     * @param paths <string | string[]> request path
+     * @param handler <afast.Handler> routing handler
+     * @param middlewares <afast.Middleware[]> middleware
+     */
     put(paths: string[] | string, handler: Handler, middlewares: Middleware[] = []) {
         return this.method('PUT', paths, handler, middlewares)
     }
+
+    /**
+     * Http request patch method
+     * @param paths <string | string[]> request path
+     * @param handler <afast.Handler> routing handler
+     * @param middlewares <afast.Middleware[]> middleware
+     */
     patch(paths: string[] | string, handler: Handler, middlewares: Middleware[] = []) {
         return this.method('PATCH', paths, handler, middlewares)
     }
+
+    /**
+     * Http request delete method
+     * @param paths <string | string[]> request path
+     * @param handler <afast.Handler> routing handler
+     * @param middlewares <afast.Middleware[]> middleware
+     */
     delete(paths: string[] | string, handler: Handler, middlewares: Middleware[] = []) {
         return this.method('DELETE', paths, handler, middlewares)
     }
@@ -161,6 +188,12 @@ class Router {
         return this.method('GET', paths, handler, middlewares)
     }
 
+    /**
+     * Create routing group
+     * @param paths <string | string[]> request path
+     * @param middlewares <afast.Middleware[]> middleware
+     * @returns Router group
+     */
     group(paths: string[] | string, middlewares: any[] = []): Router {
         if (typeof paths === 'string') {
             paths = paths.split('/').filter((x) => x !== '')
@@ -265,6 +298,12 @@ class App {
         return this.method('GET', paths, handler, middlewares)
     }
 
+    /**
+     * Create routing group
+     * @param paths <string | string[]> path
+     * @param middlewares <afast.Middleware[]> middleware
+     * @returns Router group
+     */
     group(paths: string[] | string, middlewares: Middleware[] = []): Router {
         return this.root.group(paths, middlewares)
     }
