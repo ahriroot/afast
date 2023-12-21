@@ -1,4 +1,3 @@
-import { Pool, PoolClient } from 'pg'
 import DBPool from './db'
 
 export const Default = {
@@ -6,6 +5,7 @@ export const Default = {
 }
 
 export type Options = {
+    length?: number
     primary?: boolean
     show?: boolean
     default?: any
@@ -22,18 +22,6 @@ export class Model {
             return table.slice(1)
         }
         return table
-    }
-
-    async conn() {
-        const pool = new Pool({
-            user: 'postgres',
-            host: '127.0.0.1',
-            database: 'afast',
-            password: 'Aa12345.',
-            port: 5432,
-        })
-        const client = pool.connect()
-        return client
     }
 
     getFields() {
@@ -113,7 +101,7 @@ export class Model {
 
             return {
                 count: countRes[0].count,
-                resilt: res,
+                result: res,
             }
         } else {
             const sql = `SELECT ${columns.join(', ')} FROM ${this.table()} LIMIT ${limit} OFFSET ${offset}`
@@ -124,7 +112,7 @@ export class Model {
 
             return {
                 count: countRes[0].count,
-                resilt: res,
+                result: res,
             }
         }
     }
@@ -196,11 +184,15 @@ export class Model {
 }
 
 export class Field {
+    length?: number
     show: boolean = true
     primary: boolean = false
     default?: any
     nullable?: boolean = false
     constructor(options: Options) {
+        if (options.length !== undefined) {
+            this.length = options.length
+        }
         if (options.show !== undefined) {
             this.show = options.show
         }
@@ -215,67 +207,67 @@ export class Field {
 }
 
 export class FieldPrimary extends Field {
-    constructor(options: Options) {
-        options.primary = true
-        super(options)
+    constructor({ show }: { show?: boolean }) {
+        super({ primary: true, show })
     }
 }
 
-export const fieldPrimary = (options: Options = {}) => {
+export const fieldPrimary = (options: { show?: boolean } = {}) => {
     return new FieldPrimary(options)
 }
 
 export class FieldNumber extends Field {
-    constructor(options: Options) {
-        options.primary = false
+    constructor(options: { show?: boolean; default?: number | null; nullable?: boolean }) {
         super(options)
     }
 }
 
-export const fieldNumber = (options: Options = {}) => {
+export const fieldNumber = (options: { show?: boolean; default?: number | null; nullable?: boolean } = {}) => {
     return new FieldNumber(options)
 }
 
 export class FieldString extends Field {
-    constructor(options: Options) {
-        options.primary = false
+    constructor(options: { show?: boolean; length?: number; default?: string | null; nullable?: boolean }) {
         super(options)
     }
 }
 
-export const fieldString = (options: Options = {}) => {
+export const fieldString = (
+    options: { show?: boolean; length?: number; default?: string | null; nullable?: boolean } = {
+        length: 255,
+    }
+) => {
     return new FieldString(options)
 }
 
 export class FieldText extends Field {
-    constructor(options: Options) {
-        options.primary = false
+    constructor(options: { show?: boolean; default?: string | null; nullable?: boolean }) {
         super(options)
     }
 }
 
-export const fieldText = (options: Options = {}) => {
+export const fieldText = (options: { show?: boolean; default?: string | null; nullable?: boolean } = {}) => {
     return new FieldText(options)
 }
 
 export class FieldBoolean extends Field {
-    constructor(options: Options) {
-        options.primary = false
+    constructor(options: { show?: boolean; default?: boolean | null; nullable?: boolean }) {
         super(options)
     }
 }
 
-export const fieldBoolean = (options: Options = {}) => {
+export const fieldBoolean = (options: { show?: boolean; default?: boolean | null; nullable?: boolean } = {}) => {
     return new FieldBoolean(options)
 }
 
 export class FieldTimestamp extends Field {
-    constructor(options: Options) {
-        options.primary = false
+    constructor(options: { show?: boolean; default?: number | string | null; nullable?: boolean }) {
         super(options)
     }
 }
 
-export const fieldTimestamp = (options: Options = {}) => {
+export const fieldTimestamp = (
+    options: { show?: boolean; default?: number | string | null; nullable?: boolean } = {}
+) => {
     return new FieldTimestamp(options)
 }

@@ -1,6 +1,6 @@
 import { App, ARequest, AResponse, Config, Middleware, View, migrate } from './afast'
 import { Default, Model, fieldNumber, fieldPrimary, fieldString, fieldTimestamp } from './afast/model'
-import { AWebSocket, Websocket } from './afast/types'
+import { WsClient, Websocket } from './afast/types'
 
 const app = new App()
 
@@ -20,9 +20,12 @@ app.post('/hello/world3', async (request) => {
 })
 
 class M1 implements Middleware {
-    async request(request: ARequest) {
+    async request(request: ARequest, ws?: WsClient) {
         request.set('M1', 'M1 VAlue')
         console.log('M1 request')
+        if (ws) {
+            ws.send('M1 request')
+        }
         return request
     }
 
@@ -108,21 +111,21 @@ const v = new TestView()
 g.viewId('/world4', v)
 
 class TestWebsocket implements Websocket {
-    async open(ws: AWebSocket, request: ARequest) {
+    async open(ws: WsClient, request: ARequest) {
         ws.send('server connect')
-        console.log('connect')
+        console.log('connect', request.get('M1'))
     }
-    async close(ws: AWebSocket) {
+    async close(ws: WsClient) {
         ws.send('server disconnect')
         console.log('disconnect')
     }
-    async message(ws: AWebSocket, msg: any) {
+    async message(ws: WsClient, msg: any) {
         ws.send('server message')
         console.log('message', msg)
     }
 }
 
-g.ws('/world5', new TestWebsocket())
+g.ws('/world5', new TestWebsocket(), [new M1()])
 
 console.log(app.map())
 
@@ -143,9 +146,9 @@ const config: Config = {
     // },
 }
 
-// console.log('migrate start')
-// console.log(await migrate(config, [TestModel], true))
-// console.log('migrate end')
+console.log('migrate start')
+console.log(await migrate(config, [TestModel], true))
+console.log('migrate end')
 
 const server = app.run(config)
 

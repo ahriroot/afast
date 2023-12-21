@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+    <script>
+        const ws = new WebSocket("ws://127.0.0.1:3000/hello/world5");
+        ws.onopen = function () {
+            console.log("连接成功");
+            ws.send("发送数据");
+        };
+        ws.onmessage = function (e) {
+            console.log("收到服务端的消息：" + e.data);
+        };
+        ws.onclose = function () {
+            console.log("连接关闭");
+        };
+        ws.onerror = function () {
+            console.log("出现错误");
+        };
+        setTimeout(() => {
+            ws.send("发送数据");
+        }, 3000);
+    </script>
+</body>
+
+</html>

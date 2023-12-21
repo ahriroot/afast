@@ -138,7 +138,7 @@ export class Router {
      * @param middlewares <afast.Middleware[]> middleware
      */
     ws(paths: string[] | string, websocket: Websocket, middlewares: Middleware[] = []) {
-        return this.method('GET', paths, websocket, middlewares)
+        return this.method('WEBSOCKET', paths, websocket, middlewares)
     }
 
     /**

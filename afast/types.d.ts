@@ -1,4 +1,4 @@
-import { BunFile } from "bun"
+import { Model } from './model'
 
 type JsonResponse = { [key: string]: any }
 
@@ -10,19 +10,24 @@ export type Config = {
     database?: any
 }
 
+export type WsClient = ServerWebSocket<unknown>
+
 export interface Middleware {
-    request(request: ARequest): Promise<ARequest>
+    /**
+     * @param request <afast.ARequest> request
+     * @param ws <afast.WsClient> websocket client (only for websocket)
+     * @returns <afast.ARequest> request
+     */
+    request(request: ARequest, ws?: WsClient): Promise<ARequest>
     response(request: ARequest, response: AResponse): Promise<AResponse>
 }
 
 export type Handler = (request: ARequest) => Promise<AResponse>
 
 export interface View {
-    model: Model
-    allowed: string[]
+    model?: Model
+    allowed?: string[]
 }
-
-export type AWebSocket = ServerWebSocket<unknown>
 
 export interface Websocket {
     open(ws: AWebSocket, request: ARequest)

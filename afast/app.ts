@@ -1,14 +1,14 @@
 import DBPool from './db'
 import { ARequest } from './request'
 import { Router } from './router'
-import { AResponse, Config, Handler, Middleware, View, Websocket } from './types'
+import { AResponse, Config, Handler, Middleware, View, Websocket, WsClient } from './types'
 
 export class App {
     root: Router
-    uniqueIdWeakMap: WeakMap<WeakKey, any>
+    wsClients: WeakMap<WsClient, Websocket>
     constructor() {
         this.root = new Router()
-        this.uniqueIdWeakMap = new WeakMap()
+        this.wsClients = new WeakMap()
     }
 
     private print(router: Router, depth = 0): string {
@@ -199,6 +199,18 @@ export class App {
                 // Set params to req
                 req.setParams(params)
 
+                // Upgrade request to websocket
+                if (
+                    server.upgrade(request, {
+                        data: {
+                            req: req,
+                            router: router,
+                        },
+                    })
+                ) {
+                    return
+                }
+
                 let func: Handler
                 let middlewares: Middleware[]
 
@@ -233,11 +245,15 @@ export class App {
 
                             // View allowed http methods
                             const allowed = views.view.allowed
-                            if (!allowed.includes(req.method)) {
+                            if (allowed && !allowed.includes(req.method)) {
                                 return new Response('Method Not Allowed', { status: 405 })
                             }
                             // Get DB model from view
                             const model = views.view.model
+
+                            if (!model) {
+                                return new Response('Not Found', { status: 404 })
+                            }
 
                             switch (req.method) {
                                 case 'GET':
@@ -301,18 +317,6 @@ export class App {
                     middlewares = handObject.middlewares
                 }
 
-                // Upgrade request to websocket
-                if (
-                    server.upgrade(request, {
-                        data: {
-                            unique: req.url.pathname,
-                            request: req,
-                        },
-                    })
-                ) {
-                    return
-                }
-
                 // Call middlewares request
                 for (const middleware of middlewares) {
                     req = await middleware.request(req)
@@ -337,26 +341,34 @@ export class App {
             },
             websocket: {
                 async open(ws) {
-                    const data = ws.data as { unique: string; request: ARequest }
-                    const r = await self.index(data.unique.split('/').filter((x) => x !== ''))
-                    if (!r) {
+                    const { req, router } = ws.data as {
+                        req: ARequest
+                        router: Router
+                    }
+                    const handler = router?.router['WEBSOCKET']?.handler as Websocket
+                    const middlewares = router?.router['WEBSOCKET']?.middlewares as Middleware[]
+                    if (!handler) {
                         ws.close()
                         return
                     }
-                    const { router } = r
-                    self.uniqueIdWeakMap.set(ws, router.router['GET'].handler)
-                    const handler = router.router['GET'].handler as Websocket
-                    handler.open(ws, data.request)
+                    let request = req
+                    if (middlewares) {
+                        for (const middleware of middlewares) {
+                            request = await middleware.request(request, ws)
+                        }
+                    }
+                    self.wsClients.set(ws, handler)
+                    handler.open(ws, request)
                 },
                 async message(ws, message) {
-                    const handler = self.uniqueIdWeakMap.get(ws) as Websocket
+                    const handler = self.wsClients.get(ws) as Websocket
                     if (message instanceof Buffer) {
                         message = Buffer.from(message).toString()
                     }
                     handler.message(ws, message)
                 },
                 async close(ws) {
-                    const handler = self.uniqueIdWeakMap.get(ws) as Websocket
+                    const handler = self.wsClients.get(ws) as Websocket
                     handler.close(ws)
                 },
             },
