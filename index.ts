@@ -1,6 +1,6 @@
-import App, { ARequest, AResponse, Config, Middleware, View, migrate } from './afast'
-import {} from './afast'
-import { Model, fieldNumber, fieldPrimary, fieldString, Default, fieldTimestamp } from './afast/model'
+import { App, ARequest, AResponse, Config, Middleware, View, migrate } from './afast'
+import { Default, Model, fieldNumber, fieldPrimary, fieldString, fieldTimestamp } from './afast/model'
+import { AWebSocket, Websocket } from './afast/types'
 
 const app = new App()
 
@@ -105,7 +105,24 @@ class TestView implements View {
 
 const v = new TestView()
 
-g.view('/world4', v)
+g.viewId('/world4', v)
+
+class TestWebsocket implements Websocket {
+    async open(ws: AWebSocket, request: ARequest) {
+        ws.send('server connect')
+        console.log('connect')
+    }
+    async close(ws: AWebSocket) {
+        ws.send('server disconnect')
+        console.log('disconnect')
+    }
+    async message(ws: AWebSocket, msg: any) {
+        ws.send('server message')
+        console.log('message', msg)
+    }
+}
+
+g.ws('/world5', new TestWebsocket())
 
 console.log(app.map())
 
@@ -126,9 +143,9 @@ const config: Config = {
     // },
 }
 
-console.log('migrate start')
-console.log(await migrate(config, [TestModel], true))
-console.log('migrate end')
+// console.log('migrate start')
+// console.log(await migrate(config, [TestModel], true))
+// console.log('migrate end')
 
 const server = app.run(config)
 

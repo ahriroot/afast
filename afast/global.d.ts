@@ -9,6 +9,7 @@ declare global {
     namespace globalThis {
         var dialect: Dialect
         var pool: DBPool
+        var wsc: any
     }
 }
 

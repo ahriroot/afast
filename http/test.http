@@ -4,6 +4,10 @@
 GET http://127.0.0.1:3000/hello/world4
 Content-Type: application/json
 
+### GET BY ID
+GET http://127.0.0.1:3000/hello/world4/1
+Content-Type: application/json
+
 
 ### POST
 POST http://127.0.0.1:3000/hello/world4
