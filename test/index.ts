@@ -1,9 +1,6 @@
-# AFast Web Framework
-
-```typescript
-import { App, ARequest, AResponse, Config, Middleware, View, migrate } from './afast'
-import { Default, Model, fieldNumber, fieldPrimary, fieldString, fieldTimestamp } from './afast/model'
-import { WsClient, Websocket } from './afast/types'
+import { App, ARequest, AResponse, Config, Middleware, View, migrate } from '../afast'
+import { Default, Model, fieldNumber, fieldPrimary, fieldString, fieldTimestamp } from '../afast/model'
+import { WsClient, Websocket } from '../afast/types'
 
 const app = new App()
 
@@ -144,7 +141,7 @@ const config: Config = {
     //     host: '127.0.0.1',
     //     port: 5432,
     //     user: 'postgres',
-    //     pass: '',
+    //     pass: 'Aa12345.',
     //     name: 'afast',
     // },
 }
@@ -156,4 +153,3 @@ console.log('migrate end')
 const server = app.run(config)
 
 console.log(`Listening on ${server.url}`)
-```
