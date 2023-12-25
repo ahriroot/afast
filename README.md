@@ -1,9 +1,24 @@
 # AFast Web Framework
 
+## Tnstall dependencies
+
+```bash
+npm install -g bun
+bun install
+```
+
+## Start server
+
+```bash
+bun run index.ts
+```
+
+## Example
+
 ```typescript
-import { App, ARequest, AResponse, Config, Middleware, View, migrate } from './afast'
-import { Default, Model, fieldNumber, fieldPrimary, fieldString, fieldTimestamp } from './afast/model'
-import { WsClient, Websocket } from './afast/types'
+import { App, ARequest, AResponse, Config, Middleware, View, migrate } from 'afast'
+import { Default, Model, fieldNumber, fieldPrimary, fieldString, fieldTimestamp } from 'afast'
+import { WsClient, Websocket } from 'afast'
 
 const app = new App()
 
@@ -144,7 +159,7 @@ const config: Config = {
     //     host: '127.0.0.1',
     //     port: 5432,
     //     user: 'postgres',
-    //     pass: '',
+    //     pass: 'Aa12345.',
     //     name: 'afast',
     // },
 }

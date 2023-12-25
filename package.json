@@ -9,6 +9,10 @@
     "description": "A fast Web Framework by TypeScript",
     "main": "afast/index.ts",
     "types": "afast/types.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/ahriroot/afast"
+    },
     "keywords": [
         "afast",
         "web",
@@ -16,6 +20,10 @@
         "typescript",
         "orm"
     ],
+    "bugs": {
+        "url": "https://github.com/ahriroot/afast/issues"
+    },
+    "homepage": "https://github.com/ahriroot/afast/blob/dev/README.md",
     "files": [
         "afast",
         "index.ts",
