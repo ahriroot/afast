@@ -1,6 +1,6 @@
 {
     "name": "afast",
-    "version": "0.0.2",
+    "version": "0.0.3",
     "author": {
         "name": "ahriknow",
         "email": "ahriknow@ahriknow.com"
@@ -29,6 +29,7 @@
         "index.ts",
         "LICENSE",
         "package.json",
+        "README.en.md",
         "README.md"
     ],
     "devDependencies": {
