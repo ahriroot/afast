@@ -1,5 +1,14 @@
 import DBPool from './db'
 
+export * from './model/primary'
+export * from './model/number'
+export * from './model/float'
+export * from './model/string'
+export * from './model/text'
+export * from './model/boolean'
+export * from './model/timestamp'
+export * from './model/json'
+
 export const Default = {
     CURRENT_TIMESTAMP: 'CURRENT_TIMESTAMP',
 }
@@ -204,70 +213,4 @@ export class Field {
             this.nullable = options.nullable
         }
     }
-}
-
-export class FieldPrimary extends Field {
-    constructor({ show }: { show?: boolean }) {
-        super({ primary: true, show })
-    }
-}
-
-export const fieldPrimary = (options: { show?: boolean } = {}) => {
-    return new FieldPrimary(options)
-}
-
-export class FieldNumber extends Field {
-    constructor(options: { show?: boolean; default?: number | null; nullable?: boolean }) {
-        super(options)
-    }
-}
-
-export const fieldNumber = (options: { show?: boolean; default?: number | null; nullable?: boolean } = {}) => {
-    return new FieldNumber(options)
-}
-
-export class FieldString extends Field {
-    constructor(options: { show?: boolean; length?: number; default?: string | null; nullable?: boolean }) {
-        super(options)
-    }
-}
-
-export const fieldString = (
-    options: { show?: boolean; length?: number; default?: string | null; nullable?: boolean } = {
-        length: 255,
-    }
-) => {
-    return new FieldString(options)
-}
-
-export class FieldText extends Field {
-    constructor(options: { show?: boolean; default?: string | null; nullable?: boolean }) {
-        super(options)
-    }
-}
-
-export const fieldText = (options: { show?: boolean; default?: string | null; nullable?: boolean } = {}) => {
-    return new FieldText(options)
-}
-
-export class FieldBoolean extends Field {
-    constructor(options: { show?: boolean; default?: boolean | null; nullable?: boolean }) {
-        super(options)
-    }
-}
-
-export const fieldBoolean = (options: { show?: boolean; default?: boolean | null; nullable?: boolean } = {}) => {
-    return new FieldBoolean(options)
-}
-
-export class FieldTimestamp extends Field {
-    constructor(options: { show?: boolean; default?: number | string | null; nullable?: boolean }) {
-        super(options)
-    }
-}
-
-export const fieldTimestamp = (
-    options: { show?: boolean; default?: number | string | null; nullable?: boolean } = {}
-) => {
-    return new FieldTimestamp(options)
 }

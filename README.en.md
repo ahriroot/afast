@@ -2,20 +2,20 @@
 
 [简体中文](./README.md) | [English](./README.en.md)
 
-## 安装依赖
+## Tnstall dependencies
 
 ```bash
 npm install -g bun
 bun install
 ```
 
-## 启动服务
+## Start server
 
 ```bash
 bun run index.ts
 ```
 
-## 示例
+## Example
 
 ```typescript
 import { App, ARequest, AResponse, Config, Middleware, View, migrate } from 'afast'
@@ -24,17 +24,17 @@ import { WsClient, Websocket } from 'afast'
 
 const app = new App()
 
-// 创建 get 请求的路由
+// Create get request route
 app.get('/hello/world1', async (request) => {
     return new Response('Hello, world2!')
 })
 
-// 创建 post 请求的路由
+// Create post request route
 app.post('/hello/world3', async (request) => {
     return new Response('Hello, world3!')
 })
 
-// 创建带 param 参数的路由
+// Create route with param
 app.get('/hello/world2/:id:number/:super:boolean/:name', async (request) => {
     return {
         hello: 'world1',
@@ -44,9 +44,9 @@ app.get('/hello/world2/:id:number/:super:boolean/:name', async (request) => {
     }
 })
 
-// 中间件
+// Create Middleware
 class M1 implements Middleware {
-    // 只有 websocket 请求会传入 ws
+    // Only websocket request will pass ws
     async request(request: ARequest, ws?: WsClient) {
         request.set('M1', 'M1 VAlue')
         console.log('M1 request')
@@ -68,7 +68,7 @@ class M1 implements Middleware {
     }
 }
 
-// 中间件
+// Create Middleware
 class M2 {
     async request(request: ARequest) {
         request.set('M2', 'M2 VAlue')
@@ -77,7 +77,7 @@ class M2 {
     }
 
     async response(request: ARequest, response: AResponse) {
-        // response 类型可能是 Response 或 Json Object
+        // response type is Response or JsonObject
         if (response instanceof Response) {
             response.headers.set('M2', 'M2 VAlue')
         } else {
@@ -88,7 +88,7 @@ class M2 {
     }
 }
 
-// 包装 response 的中间件
+// Create Middleware to change response
 class MiddlewareRes {
     async request(request: ARequest) {
         return request
@@ -103,10 +103,10 @@ class MiddlewareRes {
     }
 }
 
-// 创建路由组
+// Create route group
 const group = app.group('/hello', [new MiddlewareRes()])
 
-// 创建基于路由组的路由
+// Create route based on route group
 group.get(
     '/world3',
     async (request) => {
@@ -120,7 +120,7 @@ group.get(
     [new M2()]
 )
 
-// 数据库模型
+// Database model
 class TestModel extends Model {
     table() {
         return 'test'
@@ -133,17 +133,17 @@ class TestModel extends Model {
     created = fieldTimestamp({ default: Default.CURRENT_TIMESTAMP })
 }
 
-// 视图 自动创建 get post put delete 用于 crud
+// Create view (auto generate get post put delete route for crud)
 class TestView implements View {
     model: Model = new TestModel()
     allowed: string[] = ['GET', 'POST', 'PUT', 'DELETE']
 }
 
-// 注册视图 viewId 会自动注册 ${path}/:paimary
+// Register view (viewId will auto register ${path}/:paimary)
 // group.view('/world4', new TestView())
 group.viewId('/world4', new TestView())
 
-// websocket 视图
+// Create websocket view
 class TestWebsocket implements Websocket {
     async open(ws: WsClient, request: ARequest) {
         ws.send('server connect')
@@ -159,13 +159,13 @@ class TestWebsocket implements Websocket {
     }
 }
 
-// 注册 websocket 视图
+// Register websocket view
 group.ws('/world5', new TestWebsocket(), [new M1()])
 
-// 打印路由表
+// Print route map
 console.log(app.map())
 
-// 配置
+// Config
 const config: Config = {
     port: 3000,
     host: 'localhost',
@@ -183,13 +183,13 @@ const config: Config = {
     // },
 }
 
-// 迁移数据库
+// Migrate database
 console.log('migrate start')
-console.log(await migrate(config, [TestModel], true))  // true 会删除表并重新创建 (谨慎使用)
+console.log(await migrate(config, [TestModel], true))  // true will drop table and recreate (use with caution)
 console.log('migrate end')
 
 
-// 启动服务
+// Start server
 const server = app.run(config)
 
 console.log(`Listening on ${server.url}`)

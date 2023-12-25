@@ -2,6 +2,14 @@ import { Serve, SocketAddress } from 'bun'
 import { App, Router } from '.'
 import { Model } from './model'
 
+export type Options = {
+    length?: number
+    primary?: boolean
+    show?: boolean
+    default?: any
+    nullable?: boolean
+}
+
 type JsonResponse = { [key: string]: any }
 
 export type Server = typeof Serve
