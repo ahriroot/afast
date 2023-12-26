@@ -8,6 +8,8 @@ export type Options = {
     show?: boolean
     default?: any
     nullable?: boolean
+    foreign?: typeof Model
+    references?: string
 }
 
 type JsonResponse = { [key: string]: any }
@@ -104,7 +106,7 @@ export interface Websocket {
     close(ws: AWebSocket)
 }
 
-export type AResponse = JsonResponse | Response
+export type AResponse = JsonResponse | Response | Error
 
 export declare const Default = {
     CURRENT_TIMESTAMP: 'CURRENT_TIMESTAMP',
@@ -179,6 +181,8 @@ export declare function fieldTimestamp(options?: {
  * @property {function} request_delete - Request delete (CRUD delete)
  */
 export declare class Model {
+    _fields: { name: string; type: any; value: any }[]
+    _stations: { name: string; value: any }[]
     constructor()
 
     /**
@@ -200,10 +204,16 @@ export declare class Model {
      * @returns {{name: string;type: any;value: any}[]} Table columns
      */
     getFields(): {
-        name: string
-        type: any
-        value: any
-    }[]
+        columns: {
+            name: string
+            type: any
+            value: any
+        }[]
+        stations: {
+            name: string
+            value: any
+        }[]
+    }
 
     /**
      * Request primary (CRUD select by primary)

@@ -1,5 +1,14 @@
 import { App, ARequest, AResponse, Config, Middleware, View, migrate } from '../afast'
-import { Default, Model, fieldNumber, fieldPrimary, fieldString, fieldTimestamp } from '../afast/model'
+import {
+    Default,
+    Model,
+    fieldForeign,
+    fieldNumber,
+    fieldPrimary,
+    fieldString,
+    fieldTimestamp,
+    station,
+} from '../afast/model'
 import { WsClient, Websocket } from '../afast/types'
 
 const app = new App()
@@ -75,6 +84,13 @@ class MiddlewareRes {
     }
 
     async response(request: ARequest, response: AResponse) {
+        if (response instanceof Error) {
+            return {
+                code: 50000,
+                msg: 'success',
+                data: response.message,
+            }
+        }
         return {
             code: 10000,
             msg: 'success',
@@ -111,6 +127,18 @@ class TestModel extends Model {
     username = fieldString()
     password = fieldString({ show: false })
     created = fieldTimestamp({ default: Default.CURRENT_TIMESTAMP })
+    articles = station({ model: ArticleModel, references: 'user' })
+}
+
+class ArticleModel extends Model {
+    table() {
+        return 'article'
+    }
+    id = fieldPrimary()
+    title = fieldString()
+    content = fieldString()
+    created = fieldTimestamp({ default: Default.CURRENT_TIMESTAMP })
+    user = fieldForeign({ foreign: TestModel, references: 'id' })
 }
 
 // 视图 自动创建 get post put delete 用于 crud
@@ -165,9 +193,8 @@ const config: Config = {
 
 // 迁移数据库
 console.log('migrate start')
-console.log(await migrate(config, [TestModel], true))  // true 会删除表并重新创建 (谨慎使用)
+console.log(await migrate(config, [TestModel, ArticleModel], true)) // true 会删除表并重新创建 (谨慎使用)
 console.log('migrate end')
-
 
 // 启动服务
 const server = app.run(config)

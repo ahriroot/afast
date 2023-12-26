@@ -240,71 +240,76 @@ export class App {
 
                         let resp: AResponse
 
-                        if (!func) {
-                            // View function not found. Automatically call CRUD function
+                        try {
+                            if (!func) {
+                                // View function not found. Automatically call CRUD function
 
-                            // View allowed http methods
-                            const allowed = views.view.allowed
-                            if (allowed && !allowed.includes(req.method)) {
-                                return new Response('Method Not Allowed', { status: 405 })
-                            }
-                            // Get DB model from view
-                            const model = views.view.model
-
-                            if (!model) {
-                                return new Response('Not Found', { status: 404 })
-                            }
-
-                            switch (req.method) {
-                                case 'GET':
-                                    if (req.params.primary === undefined) {
-                                        resp = await model.request_get(
-                                            req.query.page || 1,
-                                            req.query.size || 10,
-                                            req.query.sorts ? req.query.sorts.split(',') : []
-                                        )
-                                    } else {
-                                        resp = await model.request_primary(req.params.primary)
-                                    }
-                                    break
-                                case 'POST':
-                                    resp = await model.request_post(req.body)
-                                    break
-                                case 'PUT':
-                                    if (req.params.primary === undefined) {
-                                        return new Response('Not Found', { status: 404 })
-                                    }
-                                    resp = await model.request_put(req.params.primary, req.body)
-                                    break
-                                case 'PATCH':
-                                    if (req.params.primary === undefined) {
-                                        return new Response('Not Found', { status: 404 })
-                                    }
-                                    resp = await model.request_put(req.params.primary, req.body)
-                                    break
-                                case 'DELETE':
-                                    if (req.params.primary === undefined) {
-                                        return new Response('Not Found', { status: 404 })
-                                    }
-                                    resp = await model.request_delete(req.params.primary)
-                                    break
-                                default:
+                                // View allowed http methods
+                                const allowed = views.view.allowed
+                                if (allowed && !allowed.includes(req.method)) {
                                     return new Response('Method Not Allowed', { status: 405 })
+                                }
+                                // Get DB model from view
+                                const model = views.view.model
+
+                                if (!model) {
+                                    return new Response('Not Found', { status: 404 })
+                                }
+
+                                switch (req.method) {
+                                    case 'GET':
+                                        if (req.params.primary === undefined) {
+                                            resp = await model.request_get(
+                                                req.query.page || 1,
+                                                req.query.size || 10,
+                                                req.query.sorts ? req.query.sorts.split(',') : []
+                                            )
+                                        } else {
+                                            resp = await model.request_primary(req.params.primary)
+                                        }
+                                        break
+                                    case 'POST':
+                                        resp = await model.request_post(req.body)
+                                        break
+                                    case 'PUT':
+                                        if (req.params.primary === undefined) {
+                                            return new Response('Not Found', { status: 404 })
+                                        }
+                                        resp = await model.request_put(req.params.primary, req.body)
+                                        break
+                                    case 'PATCH':
+                                        if (req.params.primary === undefined) {
+                                            return new Response('Not Found', { status: 404 })
+                                        }
+                                        resp = await model.request_put(req.params.primary, req.body)
+                                        break
+                                    case 'DELETE':
+                                        if (req.params.primary === undefined) {
+                                            return new Response('Not Found', { status: 404 })
+                                        }
+                                        resp = await model.request_delete(req.params.primary)
+                                        break
+                                    default:
+                                        return new Response('Method Not Allowed', { status: 405 })
+                                }
+                            } else {
+                                // Call view function
+                                resp = await func(req)
                             }
-                        } else {
-                            // Call view function
-                            resp = await func(req)
+                        } catch (error: any) {
+                            resp = error
                         }
 
                         // Call middlewares response
                         for (let i = middlewares.length - 1; i >= 0; i--) {
-                            resp = await middlewares[i].response(req, resp)
+                            resp = await middlewares[i].response(req, resp || null)
                         }
 
                         if (resp instanceof Response) {
                             return resp
+                        } else if (resp instanceof Error) {
+                            return new Response('Internal Server Error', { status: 500 })
                         }
-
                         return new Response(JSON.stringify(resp || null), {
                             headers: {
                                 'Content-Type': 'application/json',
@@ -322,18 +327,30 @@ export class App {
                     req = await middleware.request(req)
                 }
 
-                let resp = await func(req)
+                let resp
+                try {
+                    resp = await func(req)
+                } catch (error: any) {
+                    resp = error
+                }
+
+                if (resp === undefined) {
+                    resp = null
+                }
 
                 // Call middlewares response
                 for (let i = middlewares.length - 1; i >= 0; i--) {
                     const middleware = middlewares[i]
-                    resp = await middleware.response(req, resp)
+                    resp = await middleware.response(req, resp || null)
                 }
 
                 if (resp instanceof Response) {
                     return resp
+                } else if (resp instanceof Error) {
+                    return new Response('Internal Server Error', { status: 500 })
                 }
-                return new Response(JSON.stringify(resp), {
+
+                return new Response(JSON.stringify(resp || null), {
                     headers: {
                         'Content-Type': 'application/json',
                     },

@@ -1,5 +1,6 @@
 import DBPool from './db'
 import { Field } from './model/base'
+import { Station } from './model/foreign'
 
 export * from './model/primary'
 export * from './model/number'
@@ -9,6 +10,7 @@ export * from './model/text'
 export * from './model/boolean'
 export * from './model/timestamp'
 export * from './model/json'
+export * from './model/foreign'
 
 export const Default = {
     CURRENT_TIMESTAMP: 'CURRENT_TIMESTAMP',
@@ -23,7 +25,8 @@ export type Options = {
 }
 
 export class Model {
-    private _fields?: { name: string; type: any; value: any }[] = undefined
+    _fields: { name: string; type: any; value: any }[] = []
+    _stations: { name: string; value: any }[] = []
 
     table() {
         const name = this.constructor.name
@@ -35,11 +38,15 @@ export class Model {
     }
 
     getFields() {
-        if (this._fields) {
-            return this._fields
+        if (this._fields.length > 0) {
+            return {
+                columns: this._fields,
+                stations: this._stations,
+            }
         }
         const fields = Object.getOwnPropertyDescriptors(this)
         const columns = []
+        const stations = []
         for (const key in fields) {
             if (fields[key].value instanceof Field) {
                 columns.push({
@@ -47,15 +54,24 @@ export class Model {
                     type: fields[key].value.constructor.name,
                     value: fields[key].value,
                 })
+            } else if (fields[key].value instanceof Station) {
+                stations.push({
+                    name: key,
+                    value: fields[key].value,
+                })
             }
         }
         this._fields = columns
-        return columns
+        this._stations = stations
+        return {
+            columns: columns,
+            stations: stations,
+        }
     }
 
     async migrate(client: DBPool, drop: boolean = false) {
-        const columns = this.getFields()
-        const sql = global.dialect.create(this.table(), columns)
+        const fields = this.getFields()
+        const sql = global.dialect.create(this.table(), fields.columns)
         if (drop) {
             return await client.transaction([`DROP TABLE IF EXISTS ${this.table()}`, sql])
         }
@@ -63,12 +79,14 @@ export class Model {
     }
 
     async request_primary(primary: any) {
-        const columns = this.getFields()
+        const table = this.table()
+        const fields = this.getFields()
+        const columns = fields.columns
             .filter((column) => {
                 return column.value.show
             })
             .map((column) => {
-                return column.name
+                return `${table}.${column.name} AS ${table}_${column.name}`
             })
         const sql = `SELECT ${columns.join(', ')} FROM ${this.table()} WHERE id = ${primary}`
         const res = await global.pool.query(sql)
@@ -77,7 +95,7 @@ export class Model {
 
     async request_get(page: number, size: number, sorts: string[] = []) {
         const fields = this.getFields()
-        const columns = fields
+        const columns = fields.columns
             .filter((column) => {
                 return column.value.show
             })
@@ -87,7 +105,7 @@ export class Model {
         const limit = size
         const offset = (page - 1) * size
         if (sorts.length > 0) {
-            const allColumns = fields
+            const allColumns = fields.columns
                 .filter((column) => {
                     return column.value.show
                 })
@@ -130,8 +148,9 @@ export class Model {
     async request_post(body: { [x: string]: any }) {
         const columns: string[] = []
         const values: string[] = []
-        this.getFields().forEach((field) => {
-            if (!field.value.primary) {
+        const keys = Object.keys(body)
+        this.getFields().columns.forEach((field) => {
+            if (!field.value.primary && keys.includes(field.name)) {
                 columns.push(field.name)
                 switch (field.type) {
                     case 'FieldNumber':
@@ -140,6 +159,8 @@ export class Model {
                     case 'FieldString':
                         values.push(`'${body[field.name]}'`)
                         break
+                    case 'FieldText':
+                        values.push(`'${body[field.name]}'`)
                     case 'FieldTimestamp':
                         values.push(`'${body[field.name]}'`)
                         break
@@ -159,7 +180,7 @@ export class Model {
     async request_put(primary: any, body: { [x: string]: any }) {
         const columns: string[] = []
         const keys = Object.keys(body)
-        this.getFields().forEach((field) => {
+        this.getFields().columns.forEach((field) => {
             if (!field.value.primary && keys.includes(field.name)) {
                 switch (field.type) {
                     case 'FieldNumber':

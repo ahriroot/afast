@@ -4,6 +4,7 @@ const drop = (table: string) => {
 
 const create = (table: string, columns: { type: string; name: string; value: any }[]) => {
     let sql = `CREATE TABLE IF NOT EXISTS ${table} (`
+    let f
     columns.forEach((column) => {
         let def = ''
         if (column.value.default !== undefined) {
@@ -27,6 +28,11 @@ const create = (table: string, columns: { type: string; name: string; value: any
                 break
             case 'FieldTimestamp':
                 sql += `${column.name} TIMESTAMP${def}, `
+                break
+            case 'FieldForeign':
+                f = new column.value.foreign()
+                sql += `${column.name} INTEGER${def}, `
+                sql += `foreign key(${column.name}) references ${f.table()}(${column.value.references}), `
                 break
             default:
                 sql += `${column.name} INTEGER${def}, `
