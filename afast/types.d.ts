@@ -168,6 +168,22 @@ export declare function fieldTimestamp(options?: {
 }) {}
 
 /**
+ * DB column foreign key type
+ * @param {object} option - Options
+ * @param {boolean} option.show - Show in response
+ * @param {boolean} option.nullable - Nullable
+ * @param {typeof Model} option.foreign - Foreign model
+ * @param {string} option.references - References column
+ * @returns {FieldForeign} Class FieldForeign
+ */
+export declare function fieldForeign(options?: {
+    show?: boolean
+    nullable?: boolean
+    foreign: typeof Model
+    references?: string
+}) {}
+
+/**
  * Database base Model
  * @class Model
  * @exports Model

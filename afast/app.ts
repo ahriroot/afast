@@ -11,23 +11,71 @@ export class App {
         this.wsClients = new WeakMap()
     }
 
-    private print(router: Router, depth = 0): string {
+    private print(router: Router, bg: boolean = true, depth = 0, paths: string[] = []): string {
         let result = ''
         for (const method in router.router) {
-            result += `${'  '.repeat(depth)}${method}\n`
+            const h = router.router[method].handler
+            let handler
+            if (h instanceof Function) {
+                handler = h.name
+            } else {
+                handler = h.constructor.name
+            }
+            if (bg) {
+                handler = `\x1b[3m${handler}\x1b[0m`
+            }
+            let met = method
+            if (bg) {
+                switch (method) {
+                    case 'GET':
+                        met = '\x1b[32mGET\x1b[0m'
+                        break
+                    case 'POST':
+                        met = '\x1b[33mPOST\x1b[0m'
+                        break
+                    case 'PUT':
+                        met = '\x1b[35mPUT\x1b[0m'
+                        break
+                    case 'PATCH':
+                        met = '\x1b[35mPUT\x1b[0m'
+                        break
+                    case 'DELETE':
+                        met = '\x1b[31mDELETE\x1b[0m'
+                        break
+                    case 'WEBSOCKET':
+                        met = '\x1b[36mDELETE\x1b[0m'
+                        break
+                    default:
+                        met = '\x1b[34mDELETE\x1b[0m'
+                        break
+                }
+            }
+            result += `${'    '.repeat(depth)}${met} /${paths.join('/')} [${handler}]\n`
         }
         if (router.views) {
-            result += `${'  '.repeat(depth)}VIEW\n`
+            let met = 'VIEW'
+            if (bg) {
+                met = '\x1b[34mVIEW\x1b[0m'
+            }
+            let handler = router.views.view.constructor.name
+            if (bg) {
+                handler = `\x1b[3m${handler}\x1b[0m`
+            }
+            result += `${'    '.repeat(depth)}${met} /${paths.join('/')} [${handler}]\n`
         }
         for (const path in router.children) {
-            result += `${'  '.repeat(depth)}${path}\n`
-            result += this.print(router.children[path], depth + 1)
+            let p = path
+            if (bg) {
+                p = `\x1b[3m${path}\x1b[0m`
+            }
+            result += `${'    '.repeat(depth)}${p}\n`
+            result += this.print(router.children[path], bg, depth + 1, [...paths, path])
         }
         return result
     }
 
-    map(): string {
-        return this.print(this.root)
+    map(bg: boolean = true): string {
+        return this.print(this.root, bg)
     }
 
     /**

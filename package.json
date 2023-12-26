@@ -7,7 +7,7 @@
     },
     "license": "MIT",
     "description": "A fast Web Framework by TypeScript",
-    "main": "afast/index.ts",
+    "main": "index.ts",
     "types": "afast/types.d.ts",
     "repository": {
         "type": "git",
