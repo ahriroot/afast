@@ -10,6 +10,7 @@ export class M2 {
     async response(request: ARequest, response: AResponse) {
         if (response instanceof Response) {
             response.headers.set('M2', 'M2 VAlue')
+        } else if (response instanceof Error) {
         } else {
             response['M2'] = 'M2 VAlue'
         }

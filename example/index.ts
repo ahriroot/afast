@@ -3,13 +3,13 @@ import { world1 } from './handler/world1'
 import { world2 } from './handler/world2'
 import { world3 } from './handler/world3'
 import { world4 } from './handler/world4'
+import { UserView } from './handler/world5'
+import { TestWebsocket } from './handler/world6'
 import { M1 } from './middleware/m1'
 import { M2 } from './middleware/m2'
 import { MRes } from './middleware/mres'
-import { UserView } from './handler/world5'
-import { UserModel } from './model/user'
-import { TestWebsocket } from './handler/world6'
 import { ArticleModel } from './model/article'
+import { UserModel } from './model/user'
 
 const app = new App()
 
