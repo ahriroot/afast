@@ -1,0 +1,7 @@
+port = 3000
+host = "localhost"
+static = "./example/public"
+dialect = "sqlite"
+
+[database]
+path = "./test.db"

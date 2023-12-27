@@ -17,7 +17,7 @@ export class App {
             const h = router.router[method].handler
             let handler
             if (h instanceof Function) {
-                handler = h.name
+                handler = h.name || '(anonymous)'
             } else {
                 handler = h.constructor.name
             }
@@ -74,8 +74,41 @@ export class App {
         return result
     }
 
+    private printJson(router: Router, depth = 0, paths: string[] = []): any {
+        let result: any = {}
+        for (const method in router.router) {
+            const h = router.router[method].handler
+            let handler
+            if (h instanceof Function) {
+                handler = h.name || '(anonymous)'
+            } else {
+                handler = h.constructor.name
+            }
+            result[method] = {
+                handler: handler,
+                path: `/${paths.join('/')}`,
+                middlewares: router.router[method].middlewares.map((x) => x.constructor.name),
+            }
+        }
+        if (router.views) {
+            result['VIEW'] = {
+                handler: router.views.view.constructor.name,
+                path: `/${paths.join('/')}`,
+                middlewares: router.views.middlewares.map((x) => x.constructor.name),
+            }
+        }
+        for (const path in router.children) {
+            result[path] = this.printJson(router.children[path], depth + 1, [...paths, path])
+        }
+        return result
+    }
+
     map(bg: boolean = true): string {
         return this.print(this.root, bg)
+    }
+
+    mapJson(): any {
+        return this.printJson(this.root)
     }
 
     /**
@@ -212,7 +245,9 @@ export class App {
             port: 3000,
             host: '0.0.0.0',
             dev: false,
+            static: './public',
             dialect: 'sqlite',
+            view_allowed: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
         }
     ) {
         const self = this
@@ -221,6 +256,9 @@ export class App {
             if (config.database) {
                 global.pool = new DBPool(config.dialect, config.database)
             }
+        }
+        if (config.static && config.static[config.static.length - 1] === '/') {
+            config.static = config.static.slice(0, config.static.length - 1)
         }
         const serve = Bun.serve({
             hostname: config.host,
@@ -233,6 +271,26 @@ export class App {
                 // Get router and parse params
                 const r = await this.index(req.url.pathname.split('/').filter((x) => x !== ''))
                 if (!r) {
+                    // Try to get static file
+                    if (config.static) {
+                        let file = req.url.pathname
+                        if (file === '/') {
+                            file = '/index.html'
+                        }
+                        try {
+                            const read = Bun.file(config.static + file)
+                            if (!(await read.exists())) {
+                                return new Response('Not Found', { status: 404 })
+                            }
+                            return new Response(await read.stream(), {
+                                headers: {
+                                    'Content-Type': read.type,
+                                },
+                            })
+                        } catch (e: any) {
+                            return new Response('Internal Server Error', { status: 500 })
+                        }
+                    }
                     return new Response('Not Found', { status: 404 })
                 }
 
@@ -283,7 +341,21 @@ export class App {
 
                         // Call middlewares request
                         for (const middleware of middlewares) {
-                            req = await middleware.request(req)
+                            const r = await middleware.request(req)
+                            if (r instanceof ARequest) {
+                                req = r
+                            } else {
+                                if (r instanceof Response) {
+                                    return r
+                                } else if (r instanceof Error) {
+                                    return new Response('Internal Server Error', { status: 500 })
+                                }
+                                return new Response(JSON.stringify(r || null), {
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                    },
+                                })
+                            }
                         }
 
                         let resp: AResponse
@@ -293,7 +365,10 @@ export class App {
                                 // View function not found. Automatically call CRUD function
 
                                 // View allowed http methods
-                                const allowed = views.view.allowed
+                                let allowed = views.view.allowed
+                                if (allowed === undefined) {
+                                    allowed = config.view_allowed
+                                }
                                 if (allowed && !allowed.includes(req.method)) {
                                     return new Response('Method Not Allowed', { status: 405 })
                                 }
@@ -372,7 +447,21 @@ export class App {
 
                 // Call middlewares request
                 for (const middleware of middlewares) {
-                    req = await middleware.request(req)
+                    const r = await middleware.request(req)
+                    if (r instanceof ARequest) {
+                        req = r
+                    } else {
+                        if (r instanceof Response) {
+                            return r
+                        } else if (r instanceof Error) {
+                            return new Response('Internal Server Error', { status: 500 })
+                        }
+                        return new Response(JSON.stringify(r || null), {
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                        })
+                    }
                 }
 
                 let resp
@@ -419,7 +508,12 @@ export class App {
                     let request = req
                     if (middlewares) {
                         for (const middleware of middlewares) {
-                            request = await middleware.request(request, ws)
+                            const r = await middleware.request(req)
+                            if (r instanceof ARequest) {
+                                request = r
+                            } else {
+                                throw new Error('Middleware request error')
+                            }
                         }
                     }
                     self.wsClients.set(ws, handler)

@@ -7,12 +7,12 @@ Content-Type: application/json
 
 
 ### GET BY ID
-GET http://127.0.0.1:3000/hello/world4/1
+GET http://127.0.0.1:3000/hello/world5/1
 Content-Type: application/json
 
 
 ### POST
-POST http://127.0.0.1:3000/hello/world4
+POST http://127.0.0.1:3000/hello/world5
 Content-Type: application/json
 
 {
@@ -24,7 +24,7 @@ Content-Type: application/json
 
 
 ### PUT
-PUT http://127.0.0.1:3000/hello/world4/1
+PUT http://127.0.0.1:3000/hello/world5/1
 Content-Type: application/json
 
 {
@@ -36,5 +36,5 @@ Content-Type: application/json
 
 
 ### DELETE
-DELETE http://127.0.0.1:3000/hello/world4/1
+DELETE http://127.0.0.1:3000/hello/world5/1
 Content-Type: application/json

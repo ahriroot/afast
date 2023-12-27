@@ -11,9 +11,15 @@ import { MRes } from './middleware/mres'
 import { ArticleModel } from './model/article'
 import { UserModel } from './model/user'
 
-const app = new App()
+import cfg from './config.toml'
 
-app.get('/hello/world1/:id:number/:super:boolean/:name', world1)
+const app = new App()
+app.get('/', async (request) => {
+    return {
+        hello: 'world',
+    }
+})
+app.get('/hello/world1/:id:number/:super:boolean/:name', world1, [new M2()])
 app.get('/hello/world2', world2)
 app.post('/hello/world3', world3)
 
@@ -22,24 +28,9 @@ g.get('/world4', world4, [new M2()])
 g.viewId('/world5', new UserView())
 g.ws('/world6', new TestWebsocket(), [new M1()])
 
-console.log(app.map())
+console.log(JSON.stringify(app.mapJson(), null, 4))
 
-const config: Config = {
-    port: 3000,
-    host: 'localhost',
-    dialect: 'sqlite',
-    database: {
-        path: './test.db',
-    },
-    // dialect: 'pg',
-    // database: {
-    //     host: '127.0.0.1',
-    //     port: 5432,
-    //     user: 'postgres',
-    //     pass: 'Aa12345.',
-    //     name: 'afast',
-    // },
-}
+const config = cfg as Config
 
 console.log('migrate start')
 console.log(await migrate(config, [UserModel, ArticleModel], true))

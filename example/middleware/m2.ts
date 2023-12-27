@@ -4,6 +4,9 @@ export class M2 {
     async request(request: ARequest) {
         request.set('M2', 'M2 VAlue')
         console.log('M2 request')
+        if (request.params['id'] === 1) {
+            return new Response('M2 request return')
+        }
         return request
     }
 

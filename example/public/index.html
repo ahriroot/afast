@@ -25,6 +25,7 @@
         };
         setTimeout(() => {
             ws.send("发送数据");
+            ws.close();
         }, 3000);
     </script>
 </body>

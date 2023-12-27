@@ -28,8 +28,10 @@ export type Config = {
     host?: string
     port?: number
     dev?: boolean
+    static?: string
     dialect?: 'sqlite' | 'pg' | 'mysql'
     database?: any
+    view_allowed?: string[]
 }
 
 export type WsClient = ServerWebSocket<unknown>
@@ -48,7 +50,7 @@ export interface Middleware {
      * @param ws <afast.WsClient> websocket client (only for websocket)
      * @returns <afast.ARequest> request
      */
-    request(request: ARequest, ws?: WsClient): Promise<ARequest>
+    request(request: ARequest, ws?: WsClient): Promise<ARequest | AResponse>
 
     /**
      * Middleware for response after handler
@@ -380,9 +382,15 @@ export declare class App {
 
     /**
      * Get router map
-     * @returns {Router} Tree of router map
+     * @returns {string} Tree of router map
      */
     map(): string
+
+    /**
+     * Get router map json
+     * @returns {any} Tree of router map format json
+     */
+    mapJson(): any
 
     /**
      * Register http get handler
