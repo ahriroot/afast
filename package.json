@@ -8,7 +8,7 @@
     "license": "MIT",
     "description": "A fast Web Framework by TypeScript",
     "main": "index.ts",
-    "types": "afast/types.d.ts",
+    "types": "src/types.d.ts",
     "repository": {
         "type": "git",
         "url": "https://github.com/ahriroot/afast"
@@ -25,7 +25,7 @@
     },
     "homepage": "https://github.com/ahriroot/afast/blob/dev/README.md",
     "files": [
-        "afast",
+        "src",
         "index.ts",
         "LICENSE",
         "package.json",

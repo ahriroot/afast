@@ -111,6 +111,10 @@ export class App {
         return this.printJson(this.root)
     }
 
+    use(middleware: Middleware) {
+        this.root.middlewares.push(middleware)
+    }
+
     /**
      * Http request method
      * @param method <string> request method
@@ -425,7 +429,7 @@ export class App {
 
                         // Call middlewares response
                         for (let i = middlewares.length - 1; i >= 0; i--) {
-                            resp = await middlewares[i].response(req, resp || null)
+                            resp = await middlewares[i].response(req, resp)
                         }
 
                         if (resp instanceof Response) {
@@ -478,7 +482,7 @@ export class App {
                 // Call middlewares response
                 for (let i = middlewares.length - 1; i >= 0; i--) {
                     const middleware = middlewares[i]
-                    resp = await middleware.response(req, resp || null)
+                    resp = await middleware.response(req, resp)
                 }
 
                 if (resp instanceof Response) {

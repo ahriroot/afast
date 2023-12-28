@@ -1,4 +1,5 @@
-import { App, Config, migrate } from 'afast'
+import { App, Config, migrate, cors } from 'afast'
+
 import { world1 } from './handler/world1'
 import { world2 } from './handler/world2'
 import { world3 } from './handler/world3'
@@ -14,6 +15,9 @@ import { UserModel } from './model/user'
 import cfg from './config.toml'
 
 const app = new App()
+
+app.use(cors())
+
 app.get('/', async (request) => {
     return {
         hello: 'world',

@@ -393,6 +393,13 @@ export declare class App {
     mapJson(): any
 
     /**
+     * Register middleware
+     * @param {afast.Middleware} middleware - Middleware
+     * @returns {void} void
+     */
+    use(middleware: Middleware): void
+
+    /**
      * Register http get handler
      * @param {string} path - Path
      * @param {function} handler - Handler
@@ -491,3 +498,5 @@ export declare class App {
      */
     run(config?: Config): HTTPServer
 }
+
+export * from './middleware/types'
