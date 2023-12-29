@@ -5,6 +5,7 @@ const app = new App()
 app.get('/', async (request) => {
     return {
         hello: 'world',
+        time: new Date().toLocaleString(),
     }
 })
 

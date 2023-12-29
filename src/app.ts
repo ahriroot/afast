@@ -6,9 +6,11 @@ import { AResponse, Config, Handler, Middleware, View, Websocket, WsClient } fro
 export class App {
     root: Router
     wsClients: WeakMap<WsClient, Websocket>
+    cacheRouter: { [x: string]: { router: Router; params: { [x: string]: any } } }
     constructor() {
         this.root = new Router()
         this.wsClients = new WeakMap()
+        this.cacheRouter = {}
     }
 
     private print(router: Router, bg: boolean = true, depth = 0, paths: string[] = []): string {
@@ -220,6 +222,224 @@ export class App {
         return await this.root.index(paths, {})
     }
 
+    private async handleStatic(req: ARequest, config: Config) {
+        const middlewares = this.root.middlewares
+        let file = req.url.pathname
+        if (file === '/') {
+            file = '/index.html'
+        }
+        try {
+            const read = Bun.file(config.static + file)
+            if (!(await read.exists())) {
+                return new Response('Not Found', { status: 404 })
+            }
+
+            let resp: AResponse = new Response(await read.stream(), {
+                headers: {
+                    'Content-Type': read.type,
+                },
+            })
+
+            // Call middlewares response
+            for (let i = middlewares.length - 1; i >= 0; i--) {
+                const middleware = middlewares[i]
+                resp = await middleware.response(req, resp)
+            }
+
+            return resp
+        } catch (e: any) {
+            return new Response('Internal Server Error', { status: 500 })
+        }
+    }
+
+    private async handleRequest(
+        handObject: { handler: Websocket | Handler; middlewares: Middleware[] },
+        req: ARequest,
+        config: Config
+    ): Promise<AResponse> {
+        // Get handler and middlewares from router hand object
+        const func = handObject.handler as Handler
+        const middlewares = handObject.middlewares
+
+        // Call middlewares request
+        for (const middleware of middlewares) {
+            const r = await middleware.request(req)
+            if (r instanceof ARequest) {
+                req = r
+            } else {
+                if (r instanceof Response) {
+                    return r
+                } else if (r instanceof Error) {
+                    return new Response('Internal Server Error', { status: 500 })
+                }
+                return new Response(JSON.stringify(r || null), {
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                })
+            }
+        }
+
+        let resp
+        try {
+            resp = await func(req, config.global)
+        } catch (error: any) {
+            resp = error
+        }
+
+        if (resp === undefined) {
+            resp = null
+        }
+
+        // Call middlewares response
+        for (let i = middlewares.length - 1; i >= 0; i--) {
+            const middleware = middlewares[i]
+            resp = await middleware.response(req, resp)
+        }
+
+        if (resp instanceof Response) {
+            return resp
+        } else if (resp instanceof Error) {
+            return new Response('Internal Server Error', { status: 500 })
+        }
+        return new Response(JSON.stringify(resp || null), {
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+    }
+
+    private async handleView(router: Router, req: ARequest, config: Config): Promise<AResponse> {
+        if (!router.views) {
+            // View not found
+            return new Response('Not Found', { status: 404 })
+        } else {
+            const views = router.views
+
+            // Automatically call function by http method
+            const funcName = req.method.toLowerCase()
+
+            // Get function from view class
+            const func = Object.getOwnPropertyDescriptor(views.view.constructor.prototype, funcName)?.value
+
+            // Get middlewares from view
+            const middlewares = views.middlewares
+
+            // Call middlewares request
+            for (const middleware of views.middlewares) {
+                const r = await middleware.request(req)
+                if (r instanceof ARequest) {
+                    req = r
+                } else {
+                    if (r instanceof Response) {
+                        return r
+                    } else if (r instanceof Error) {
+                        return new Response('Internal Server Error', { status: 500 })
+                    }
+                    return new Response(JSON.stringify(r || null), {
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                    })
+                }
+            }
+
+            let resp: AResponse
+
+            try {
+                if (!func) {
+                    // View function not found. Automatically call CRUD function
+
+                    // View allowed http methods
+                    let allowed = views.view.allowed
+                    if (allowed === undefined) {
+                        allowed = config.view_allowed
+                    }
+                    if (allowed && !allowed.includes(req.method)) {
+                        return new Response('Method Not Allowed', { status: 405 })
+                    }
+                    // Get DB model from view
+                    const model = views.view.model
+
+                    if (!model) {
+                        return new Response('Not Found', { status: 404 })
+                    }
+
+                    switch (req.method) {
+                        case 'GET':
+                            if (req.params.primary === undefined) {
+                                resp = await model.request_get(
+                                    req.query.page || 1,
+                                    req.query.size || 10,
+                                    req.query.sorts ? req.query.sorts.split(',') : []
+                                )
+                            } else {
+                                resp = await model.request_primary(req.params.primary)
+                            }
+                            break
+                        case 'POST':
+                            resp = await model.request_post(req.body)
+                            break
+                        case 'PUT':
+                            if (req.params.primary === undefined) {
+                                return new Response('Not Found', { status: 404 })
+                            }
+                            resp = await model.request_put(req.params.primary, req.body)
+                            break
+                        case 'PATCH':
+                            if (req.params.primary === undefined) {
+                                return new Response('Not Found', { status: 404 })
+                            }
+                            resp = await model.request_put(req.params.primary, req.body)
+                            break
+                        case 'DELETE':
+                            if (req.params.primary === undefined) {
+                                return new Response('Not Found', { status: 404 })
+                            }
+                            resp = await model.request_delete(req.params.primary)
+                            break
+                        default:
+                            return new Response('Method Not Allowed', { status: 405 })
+                    }
+                } else {
+                    // Call view function
+                    resp = await func(req, config.global)
+                }
+            } catch (error: any) {
+                resp = error
+            }
+
+            // Call middlewares response
+            for (let i = middlewares.length - 1; i >= 0; i--) {
+                resp = await middlewares[i].response(req, resp)
+            }
+
+            if (resp instanceof Response) {
+                return resp
+            } else if (resp instanceof Error) {
+                return new Response('Internal Server Error', { status: 500 })
+            }
+            return new Response(JSON.stringify(resp || null), {
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            })
+        }
+    }
+
+    private async handleResponse(resp: AResponse): Promise<Response> {
+        if (resp instanceof Response) {
+            return resp
+        } else if (resp instanceof Error) {
+            return new Response('Internal Server Error', { status: 500 })
+        }
+        return new Response(JSON.stringify(resp || null), {
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+    }
+
     /**
      * @param config <afast.Config { port?: number, host?: string, dev?: boolean, dialect?: 'sqlite' | 'pg' | 'mysql, database?: any}> config
      * @returns <Bun.Server> server
@@ -275,36 +495,32 @@ export class App {
                 let req = await ARequest.parse(request)
 
                 // Get router and parse params
-                const r = await this.index(req.url.pathname.split('/').filter((x) => x !== ''))
-                if (!r) {
-                    // Try to get static file
+                let r
+                if (req.url.pathname in this.cacheRouter) {
+                    r = this.cacheRouter[req.url.pathname]
+                } else {
+                    r = await this.index(req.url.pathname.split('/').filter((x) => x !== ''))
+                }
+
+                if (r === undefined) {
                     if (config.static) {
-                        let file = req.url.pathname
-                        if (file === '/') {
-                            file = '/index.html'
-                        }
-                        try {
-                            const read = Bun.file(config.static + file)
-                            if (!(await read.exists())) {
-                                return new Response('Not Found', { status: 404 })
-                            }
-                            return new Response(await read.stream(), {
-                                headers: {
-                                    'Content-Type': read.type,
-                                },
-                            })
-                        } catch (e: any) {
-                            return new Response('Internal Server Error', { status: 500 })
-                        }
+                        // Try to send static file
+                        const resp = await this.handleStatic(req, config)
+                        return await this.handleResponse(resp)
                     }
                     return new Response('Not Found', { status: 404 })
+                }
+
+                // Cache router and params,
+                if (!(req.url.pathname in this.cacheRouter)) {
+                    this.cacheRouter[req.url.pathname] = { router: r.router, params: r.params }
                 }
 
                 // Get handler (router.router => {method: {handler, middlewares}})
                 const { router, params } = r
 
                 // Router not found
-                if (Object.keys(router.router).length === 0 && !router.views) {
+                if (Object.keys(router.router).length === 0 && router.views === undefined) {
                     return new Response('Not Found', { status: 404 })
                 }
 
@@ -323,181 +539,17 @@ export class App {
                     return
                 }
 
-                let func: Handler
-                let middlewares: Middleware[]
-
                 const handObject = router.router[request.method]
 
-                if (!handObject) {
-                    // Handler not found
-                    if (!router.views) {
-                        // View not found
-                        return new Response('Not Found', { status: 404 })
-                    } else {
-                        const views = router.views
-
-                        // Automatically call function by http method
-                        const funcName = req.method.toLowerCase()
-
-                        // Get function from view class
-                        func = Object.getOwnPropertyDescriptor(views.view.constructor.prototype, funcName)?.value
-
-                        // Get middlewares from view
-                        middlewares = views.middlewares
-
-                        // Call middlewares request
-                        for (const middleware of middlewares) {
-                            const r = await middleware.request(req)
-                            if (r instanceof ARequest) {
-                                req = r
-                            } else {
-                                if (r instanceof Response) {
-                                    return r
-                                } else if (r instanceof Error) {
-                                    return new Response('Internal Server Error', { status: 500 })
-                                }
-                                return new Response(JSON.stringify(r || null), {
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                    },
-                                })
-                            }
-                        }
-
-                        let resp: AResponse
-
-                        try {
-                            if (!func) {
-                                // View function not found. Automatically call CRUD function
-
-                                // View allowed http methods
-                                let allowed = views.view.allowed
-                                if (allowed === undefined) {
-                                    allowed = config.view_allowed
-                                }
-                                if (allowed && !allowed.includes(req.method)) {
-                                    return new Response('Method Not Allowed', { status: 405 })
-                                }
-                                // Get DB model from view
-                                const model = views.view.model
-
-                                if (!model) {
-                                    return new Response('Not Found', { status: 404 })
-                                }
-
-                                switch (req.method) {
-                                    case 'GET':
-                                        if (req.params.primary === undefined) {
-                                            resp = await model.request_get(
-                                                req.query.page || 1,
-                                                req.query.size || 10,
-                                                req.query.sorts ? req.query.sorts.split(',') : []
-                                            )
-                                        } else {
-                                            resp = await model.request_primary(req.params.primary)
-                                        }
-                                        break
-                                    case 'POST':
-                                        resp = await model.request_post(req.body)
-                                        break
-                                    case 'PUT':
-                                        if (req.params.primary === undefined) {
-                                            return new Response('Not Found', { status: 404 })
-                                        }
-                                        resp = await model.request_put(req.params.primary, req.body)
-                                        break
-                                    case 'PATCH':
-                                        if (req.params.primary === undefined) {
-                                            return new Response('Not Found', { status: 404 })
-                                        }
-                                        resp = await model.request_put(req.params.primary, req.body)
-                                        break
-                                    case 'DELETE':
-                                        if (req.params.primary === undefined) {
-                                            return new Response('Not Found', { status: 404 })
-                                        }
-                                        resp = await model.request_delete(req.params.primary)
-                                        break
-                                    default:
-                                        return new Response('Method Not Allowed', { status: 405 })
-                                }
-                            } else {
-                                // Call view function
-                                resp = await func(req, config.global)
-                            }
-                        } catch (error: any) {
-                            resp = error
-                        }
-
-                        // Call middlewares response
-                        for (let i = middlewares.length - 1; i >= 0; i--) {
-                            resp = await middlewares[i].response(req, resp)
-                        }
-
-                        if (resp instanceof Response) {
-                            return resp
-                        } else if (resp instanceof Error) {
-                            return new Response('Internal Server Error', { status: 500 })
-                        }
-                        return new Response(JSON.stringify(resp || null), {
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                        })
-                    }
+                let resp: AResponse
+                if (handObject) {
+                    resp = await this.handleRequest(handObject, req, config)
                 } else {
-                    // Get handler and middlewares from router hand object
-                    func = handObject.handler as Handler
-                    middlewares = handObject.middlewares
+                    // Handler not found, try to call view
+                    resp = await this.handleView(router, req, config)
                 }
 
-                // Call middlewares request
-                for (const middleware of middlewares) {
-                    const r = await middleware.request(req)
-                    if (r instanceof ARequest) {
-                        req = r
-                    } else {
-                        if (r instanceof Response) {
-                            return r
-                        } else if (r instanceof Error) {
-                            return new Response('Internal Server Error', { status: 500 })
-                        }
-                        return new Response(JSON.stringify(r || null), {
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                        })
-                    }
-                }
-
-                let resp
-                try {
-                    resp = await func(req, config.global)
-                } catch (error: any) {
-                    resp = error
-                }
-
-                if (resp === undefined) {
-                    resp = null
-                }
-
-                // Call middlewares response
-                for (let i = middlewares.length - 1; i >= 0; i--) {
-                    const middleware = middlewares[i]
-                    resp = await middleware.response(req, resp)
-                }
-
-                if (resp instanceof Response) {
-                    return resp
-                } else if (resp instanceof Error) {
-                    return new Response('Internal Server Error', { status: 500 })
-                }
-
-                return new Response(JSON.stringify(resp || null), {
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                })
+                return await this.handleResponse(resp)
             },
             websocket: {
                 async open(ws) {
@@ -506,7 +558,7 @@ export class App {
                         router: Router
                     }
                     const handler = router?.router['WEBSOCKET']?.handler as Websocket
-                    const middlewares = router?.router['WEBSOCKET']?.middlewares as Middleware[]
+                    const middlewares = router?.router['WEBSOCKET']?.middlewares
                     if (!handler) {
                         ws.close()
                         return
