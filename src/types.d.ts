@@ -32,6 +32,7 @@ export type Config = {
     dialect?: 'sqlite' | 'pg' | 'mysql'
     database?: any
     view_allowed?: string[]
+    global?: any
 }
 
 export type WsClient = ServerWebSocket<unknown>
@@ -61,7 +62,7 @@ export interface Middleware {
     response(request: ARequest, response: AResponse): Promise<AResponse>
 }
 
-export type Handler = (request: ARequest) => Promise<AResponse>
+export type Handler = (request: ARequest, global?: typeof Config.global) => Promise<AResponse>
 
 /**
  * View Handler

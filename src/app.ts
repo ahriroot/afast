@@ -249,9 +249,11 @@ export class App {
             port: 3000,
             host: '0.0.0.0',
             dev: false,
-            static: './public',
+            static: undefined,
             dialect: 'sqlite',
+            database: undefined,
             view_allowed: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+            global: undefined,
         }
     ) {
         const self = this
@@ -421,7 +423,7 @@ export class App {
                                 }
                             } else {
                                 // Call view function
-                                resp = await func(req)
+                                resp = await func(req, config.global)
                             }
                         } catch (error: any) {
                             resp = error
@@ -470,7 +472,7 @@ export class App {
 
                 let resp
                 try {
-                    resp = await func(req)
+                    resp = await func(req, config.global)
                 } catch (error: any) {
                     resp = error
                 }

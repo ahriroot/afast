@@ -26,6 +26,7 @@
     "homepage": "https://github.com/ahriroot/afast/blob/dev/README.md",
     "files": [
         "src",
+        "plugin",
         "index.ts",
         "LICENSE",
         "package.json",

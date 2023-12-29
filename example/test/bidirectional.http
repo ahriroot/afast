@@ -1,0 +1,26 @@
+# Storage
+
+
+### SET
+GET http://127.0.0.1:3000/set/k1/v1
+Content-Type: application/json
+
+
+### GET Key
+GET http://127.0.0.1:3000/key
+Content-Type: application/json
+
+
+### GET Data
+GET http://127.0.0.1:3000/data
+Content-Type: application/json
+
+
+### GET One
+GET http://127.0.0.1:3000/key/v2
+Content-Type: application/json
+
+
+### GET One
+GET http://127.0.0.1:3000/value/k1
+Content-Type: application/json
