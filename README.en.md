@@ -5,7 +5,7 @@
 ## Install dependencies
 
 ```bash
-npm install -g bun
+npm install -g bun  # bun: A typescript runtime based on zig language
 # npm install pg @types/pg  # Install when using postgres 
 bun install
 ```
@@ -311,3 +311,12 @@ const server = app.run(config)
 
 console.log(`Listening on ${server.url}`)
 ```
+
+## Additional features
+
+- [Storage](./plugins/storage/README.md) `Key-Vaule` Storage
+- [Bidirectional](./plugins/storage/README.md) `Key-Value` Bidirectional Storage
+
+## LICENSE
+
+[MIT](./LICENSE)

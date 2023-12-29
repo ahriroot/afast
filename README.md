@@ -5,7 +5,7 @@
 ## 安装依赖
 
 ```bash
-npm install -g bun
+npm install -g bun  # bun: 一个基于 zig 语言的 typescript 运行时
 # npm install pg @types/pg  # 使用 postgres 时安装 
 bun install
 ```
@@ -311,3 +311,12 @@ const server = app.run(config)
 
 console.log(`Listening on ${server.url}`)
 ```
+
+## 额外的功能
+
+- [Storage](./plugins/storage/README.md) `Key-Vaule` 存储
+- [Bidirectional](./plugins/storage/README.md) `Key-Value` 双向存储
+
+## LICENSE
+
+[MIT](./LICENSE)

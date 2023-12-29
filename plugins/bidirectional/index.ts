@@ -69,11 +69,20 @@ export class Bidirectional {
         return cur.data
     }
 
-    async del(key: Key) {
+    async delByKey(key: Key) {
         const cur = this.kv[key]
         delete this.kv[key]
         if (cur !== undefined) {
             delete this.vk[cur.data]
+        }
+        return true
+    }
+
+    async delByData(data: Data) {
+        const cur = this.vk[data]
+        delete this.vk[data]
+        if (cur !== undefined) {
+            delete this.kv[cur.key]
         }
         return true
     }
