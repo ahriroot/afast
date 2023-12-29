@@ -155,7 +155,7 @@ import { ARequest, AResponse, Middleware, WsClient } from 'afast'
 
 export class M1 implements Middleware {
     async request(request: ARequest, ws?: WsClient) {
-        request.set('M1', 'M1 VAlue')
+        request.set('M1', 'M1 Value')
         console.log('M1 request')
         if (ws) {
             ws.send('M1 request ws')
@@ -165,10 +165,11 @@ export class M1 implements Middleware {
 
     async response(request: ARequest, response: AResponse) {
         if (response instanceof Response) {
-            response.headers.set('M1', 'M1 VAlue')
+            response.headers.set('M1', 'M1 Value')
         } else if (response instanceof Error) {
+            response.message += ' M1 Value'
         } else {
-            response['M1'] = 'M1 VAlue'
+            response['M1'] = 'M1 Value'
         }
         console.log('M1 response')
         return response
@@ -182,7 +183,7 @@ import { ARequest, AResponse } from "afast"
 
 export class M2 {
     async request(request: ARequest) {
-        request.set('M2', 'M2 VAlue')
+        request.set('M2', 'M2 Value')
         console.log('M2 request')
         if (request.params['id'] === 1) {
             return new Response('M2 request return')
@@ -192,10 +193,11 @@ export class M2 {
 
     async response(request: ARequest, response: AResponse) {
         if (response instanceof Response) {
-            response.headers.set('M2', 'M2 VAlue')
+            response.headers.set('M2', 'M2 Value')
         } else if (response instanceof Error) {
+            response.message += ' M2 Value'
         } else {
-            response['M2'] = 'M2 VAlue'
+            response['M2'] = 'M2 Value'
         }
         console.log('M2 response')
         return response
