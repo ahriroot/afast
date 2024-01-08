@@ -28,6 +28,46 @@ export class Model {
     _fields: { name: string; type: any; value: any }[] = []
     _stations: { name: string; value: any }[] = []
 
+    _preload: (typeof Model)[] = []
+
+    _data: { [x: string]: any } = {}
+
+    constructor(data: { [x: string]: any } = {}) {
+        this._data = data
+    }
+
+    async save() {
+        const columns: string[] = []
+        const values: string[] = []
+        const keys = Object.keys(this._data)
+        this.getFields().columns.forEach((field) => {
+            if (!field.value.primary && keys.includes(field.name)) {
+                columns.push(field.name)
+                switch (field.type) {
+                    case 'FieldNumber':
+                        values.push(this._data[field.name])
+                        break
+                    case 'FieldString':
+                        values.push(`'${this._data[field.name]}'`)
+                        break
+                    case 'FieldText':
+                        values.push(`'${this._data[field.name]}'`)
+                    case 'FieldTimestamp':
+                        values.push(`'${this._data[field.name]}'`)
+                        break
+                    default:
+                        values.push(this._data[field.name])
+                        break
+                }
+            }
+        })
+        const sql = `INSERT INTO ${this.table()} (${columns.join(', ')}) VALUES (${values.join(', ')})`
+
+        const res = await global.pool.exec(sql)
+
+        return res
+    }
+
     table() {
         const name = this.constructor.name
         const table = name.replace(/([A-Z])/g, '_$1').toLowerCase()
@@ -35,6 +75,18 @@ export class Model {
             return table.slice(1)
         }
         return table
+    }
+
+    preload(models: (typeof Model)[]) {
+        this._preload = models
+        return this
+    }
+
+    exec(sql: string) {
+        const preload_tables = this._preload.map((model) => {
+            return model.prototype.table()
+        })
+        return preload_tables
     }
 
     getFields() {
@@ -128,7 +180,7 @@ export class Model {
             const countRes = await global.pool.query(countSql)
 
             return {
-                count: countRes[0].count,
+                count: countRes[0].count as number,
                 result: res,
             }
         } else {
@@ -139,7 +191,7 @@ export class Model {
             const countRes = await global.pool.query(countSql)
 
             return {
-                count: countRes[0].count,
+                count: countRes[0].count as number,
                 result: res,
             }
         }

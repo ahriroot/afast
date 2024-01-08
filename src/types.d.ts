@@ -1,6 +1,188 @@
 import { Serve, SocketAddress } from 'bun'
-import { App, Router } from '.'
-import { Model } from './model'
+import { Model as M } from './model'
+
+export declare class Model {
+    _fields: { name: string; type: any; value: any }[] = []
+    _stations: { name: string; value: any }[] = []
+
+    _preload: (typeof Model)[] = []
+
+    constructor(data: { [x: string]: any } = {})
+
+    table(): string
+
+    async save(): Promise<any>
+
+    preload(models: (typeof Model)[]): Model
+
+    exec(sql: string): any
+
+    getFields(): {
+        columns: {
+            name: string
+            type: any
+            value: any
+        }[]
+        stations: {
+            name: string
+            value: any
+        }[]
+    }
+
+    async migrate(client: DBPool, drop: boolean = false): Promise<any>
+
+    async request_primary(primary: any): Promise<any>
+
+    async request_get(
+        page: number,
+        size: number,
+        sorts: string[] = []
+    ): Promise<{
+        count: number
+        result: any
+    }>
+
+    async request_post(body: { [x: string]: any }): Promise<any>
+
+    async request_put(primary: any, body: { [x: string]: any }): Promise<any>
+
+    async request_delete(primary: any): Promise<any>
+}
+
+export declare class DBPool {
+    db: any
+    dialect: string
+    constructor(dialect: string, database: any)
+
+    // ======================= sqlite start =======================
+    async exec_sqlite(sql: string): any
+
+    async transaction_sqlite(sqls: string[]): any
+
+    async query_sqlite(sql: string): any[]
+    // ======================= sqlite end =======================
+
+    // ======================= pg start =======================
+    async exec_pg(sql: string): any
+
+    async transaction_pg(sqls: string[]): any
+
+    async query_pg(sql: string): any[]
+    // ======================= pg end =======================
+
+    async exec(sql: string): any
+
+    async transaction(sqls: string[]): any
+
+    async query(sql: string): any[]
+}
+
+export declare class Router {
+    router: {
+        [string: string]: { handler: Handler | Websocket; middlewares: Middleware[] }
+    }
+    views: { view: View; middlewares: Middleware[] } | undefined
+    children: { [path: string]: Router }
+    middlewares: Middleware[]
+
+    /**
+     * Http request method
+     * @param method <string> request method
+     * @param paths <string | string[]> request path
+     * @param handler <afast.Handler> routing handler | view | websocket
+     * @param middlewares <afast.Middleware[]> middleware
+     */
+    method(
+        method: string,
+        paths: string[] | string,
+        handler: Handler | View | Websocket,
+        middlewares: Middleware[] = [],
+        end = false
+    ): void
+
+    /**
+     * Http request get method
+     * @param paths <string | string[]> request path
+     * @param handler <afast.Handler> routing handler
+     * @param middlewares <afast.Middleware[]> middleware
+     */
+    get(paths: string[] | string, handler: Handler, middlewares: Middleware[] = []): void
+
+    /**
+     * Http request post method
+     * @param paths <string | string[]> request path
+     * @param handler <afast.Handler> routing handler
+     * @param middlewares <afast.Middleware[]> middleware
+     */
+    post(paths: string[] | string, handler: Handler, middlewares: Middleware[] = []): void
+
+    /**
+     * Http request put method
+     * @param paths <string | string[]> request path
+     * @param handler <afast.Handler> routing handler
+     * @param middlewares <afast.Middleware[]> middleware
+     */
+    put(paths: string[] | string, handler: Handler, middlewares: Middleware[] = []): void
+
+    /**
+     * Http request patch method
+     * @param paths <string | string[]> request path
+     * @param handler <afast.Handler> routing handler
+     * @param middlewares <afast.Middleware[]> middleware
+     */
+    patch(paths: string[] | string, handler: Handler, middlewares: Middleware[] = []): void
+
+    /**
+     * Http request delete method
+     * @param paths <string | string[]> request path
+     * @param handler <afast.Handler> routing handler
+     * @param middlewares <afast.Middleware[]> middleware
+     */
+    delete(paths: string[] | string, handler: Handler, middlewares: Middleware[] = []): void
+
+    /**
+     * Http request view (auto generate CRUD)
+     * @param paths <string | string[]> request path
+     * @param view <afast.Handler> routing view
+     * @param middlewares <afast.Middleware[]> middleware
+     */
+    view(paths: string[] | string, view: View, middlewares: Middleware[] = []): void
+
+    /**
+     * Http request view (auto generate CRUD), auto reqister `${path}/:primary` router
+     * @param paths <string | string[]> request path
+     * @param view <afast.Handler> routing view
+     * @param middlewares <afast.Middleware[]> middleware
+     */
+    viewId(paths: string[] | string, view: View, middlewares: Middleware[] = []): void
+
+    /**
+     * Http request websocket
+     * @param paths <string | string[]> request path
+     * @param handler <afast.Handler> routing view
+     * @param middlewares <afast.Middleware[]> middleware
+     */
+    ws(paths: string[] | string, websocket: Websocket, middlewares: Middleware[] = []): void
+
+    /**
+     * Create routing group
+     * @param paths <string | string[]> request path
+     * @param middlewares <afast.Middleware[]> middleware
+     * @returns Router group
+     */
+    group(paths: string[] | string, middlewares: any[] = []): Router
+
+    /**
+     * Index the handler by path
+     * @param paths <string[]> request path
+     * @param params <{ [x: string]: any }> request params
+     * @returns <afast.Router> router include handler and middlewares
+     */
+    async index(
+        paths: string[],
+        params: { [x: string]: any }
+    ): Promise<{ router: Router; params: { [x: string]: any } } | undefined>
+}
 
 export type Options = {
     length?: number
@@ -8,11 +190,11 @@ export type Options = {
     show?: boolean
     default?: any
     nullable?: boolean
-    foreign?: typeof Model
+    foreign?: typeof M
     references?: string
 }
 
-type JsonResponse = { [key: string]: any }
+type JsonResponse = { [key: string]: any } | null
 
 export type Server = typeof Serve
 
@@ -122,7 +304,7 @@ export declare const Default = {
  * @param drop <boolean> drop table
  * @returns <Promise<any[]>> sql execute results
  */
-export declare function migrate(config?: Config, models: (typeof Model)[], drop: boolean) {}
+export declare function migrate(config?: Config, models: (typeof Model)[], drop: boolean = false) {}
 
 /**
  * DB column primary type
@@ -308,7 +490,7 @@ export declare class ARequest {
      * @param {{ [x: string]: any }} params - Params
      * @returns {Promise<void>} void
      */
-    static async parse(request: Request, params: { [x: string]: any }): Promise<ARequest>
+    static async parse(request: Request, params?: { [x: string]: any } = {}): Promise<ARequest>
 
     /**
      * Parse request body

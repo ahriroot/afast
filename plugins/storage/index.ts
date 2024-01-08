@@ -6,7 +6,7 @@ export class Storage {
     private _storage: { [x: Key]: Value } = {}
     constructor(autoClear: number = 0) {
         this._storage = {}
-        if (autoClear > 1) {
+        if (autoClear >= 1) {
             setInterval(() => {
                 Object.keys(this._storage).forEach((key) => {
                     const ex = this._storage[key].expire
@@ -18,7 +18,7 @@ export class Storage {
         }
     }
 
-    async set(key: Key, value: Value, expire?: number) {
+    async set(key: Key, value: Data, expire?: number) {
         this._storage[key] = {
             value,
             expire: expire ? Date.now() + expire * 1000 : undefined,
@@ -26,16 +26,16 @@ export class Storage {
         return true
     }
 
-    async get(key: Key, expire?: number) {
+    async get(key: Key, expire?: number): Promise<Data | null> {
         const cur = this._storage[key]
-        if (cur.expire && cur.expire < Date.now()) {
+        if (cur?.expire && cur.expire < Date.now()) {
             delete this._storage[key]
             return null
         }
         if (expire !== undefined) {
             this._storage[key].expire = Date.now() + expire * 1000
         }
-        return cur.value
+        return cur?.value === undefined ? null : cur.value
     }
 
     async del(key: Key) {
