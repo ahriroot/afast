@@ -21,7 +21,8 @@
             "bun-types" // add Bun global
         ],
         "experimentalDecorators": true,
-        "emitDecoratorMetadata": true
+        "emitDecoratorMetadata": true,
+        "strictPropertyInitialization": false
     },
     "include": [
         "./src/**/*.ts",

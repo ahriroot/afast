@@ -1,4 +1,4 @@
-import { Handler, Middleware, View, Websocket } from './types'
+import type { Handler, Middleware, View, Websocket } from '../types'
 
 /**
  * @description Router
@@ -41,10 +41,10 @@ export class Router {
                     middlewares: mi,
                 }
                 if (!end) {
-                    if (!this.children[':primary']) {
-                        this.children[':primary'] = new Router()
+                    if (!this.children[':primary:number']) {
+                        this.children[':primary:number'] = new Router()
                     }
-                    this.children[':primary'].method('VIEW', [], handler, mi, true)
+                    this.children[':primary:number'].method('VIEW', [], handler, mi, true)
                 }
             } else {
                 this.router[method] = {

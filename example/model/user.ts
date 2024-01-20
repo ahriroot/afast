@@ -1,13 +1,21 @@
-import { Default, Model, fieldNumber, fieldPrimary, fieldString, fieldTimestamp } from "afast"
+import { Model } from 'afast'
+import { DateField, PrimaryField, StringField } from 'afast'
 
-export class UserModel extends Model {
-    table() {
-        return 'user'
-    }
-    id = fieldPrimary()
-    name = fieldString()
-    age = fieldNumber({ default: 0 })
-    username = fieldString()
-    password = fieldString({ show: false })
-    created = fieldTimestamp({ default: Default.CURRENT_TIMESTAMP })
+export class User extends Model {
+    _table: string = 'user'
+
+    @PrimaryField()
+    id: number
+
+    @StringField()
+    name: string
+
+    @StringField()
+    username: string
+
+    @StringField()
+    password: string
+
+    @DateField({ default: Date.now })
+    created: Date
 }

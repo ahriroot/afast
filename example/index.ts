@@ -1,4 +1,6 @@
-import { App, Config, migrate, cors } from 'afast'
+import 'reflect-metadata'
+
+import { App, Config, migrate, cors, ARequest } from 'afast'
 
 import { world1 } from './handler/world1'
 import { world2 } from './handler/world2'
@@ -9,8 +11,8 @@ import { TestWebsocket } from './handler/world6'
 import { M1 } from './middleware/m1'
 import { M2 } from './middleware/m2'
 import { MRes } from './middleware/mres'
-import { ArticleModel } from './model/article'
-import { UserModel } from './model/user'
+import { Article } from './model/article'
+import { User } from './model/user'
 
 import cfg from './config.toml'
 
@@ -18,7 +20,7 @@ const app = new App()
 
 app.use(cors())
 
-app.get('/', async (request) => {
+app.get('/', async (request: ARequest) => {
     return {
         hello: 'world',
     }
@@ -36,8 +38,10 @@ console.log(JSON.stringify(app.mapJson(), null, 4))
 
 const config = cfg as Config
 
+const u = new User()
+
 console.log('migrate start')
-console.log(await migrate(config, [UserModel, ArticleModel], true))
+console.log(await migrate(config, [User, Article], false))
 console.log('migrate end')
 
 const server = app.run(config)

@@ -1,6 +1,6 @@
 import DBPool from "./db"
 import { Model } from "./model"
-import { Config } from "./types"
+import type { Config } from "../types"
 
 /**
  * @param config <afast.Config { port?: number, host?: string, dev?: boolean, dialect?: 'sqlite' | 'pg' | 'mysql, database?: any}> config

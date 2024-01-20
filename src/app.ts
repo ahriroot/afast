@@ -1,7 +1,7 @@
 import DBPool from './db'
 import { ARequest } from './request'
 import { Router } from './router'
-import { AResponse, Config, Handler, Middleware, View, Websocket, WsClient } from './types'
+import { AResponse, Config, Handler, Middleware, View, Websocket, WsClient } from '../types'
 
 export class App {
     root: Router
@@ -365,41 +365,75 @@ export class App {
                         return new Response('Not Found', { status: 404 })
                     }
 
-                    switch (req.method) {
-                        case 'GET':
-                            if (req.params.primary === undefined) {
-                                resp = await model.request_get(
-                                    req.query.page || 1,
-                                    req.query.size || 10,
-                                    req.query.sorts ? req.query.sorts.split(',') : []
-                                )
+                    if (req.method === 'GET') {
+                        if (req.params.primary === undefined) {
+                            let query = model.page(req.query.page || 1).size(req.query.size || 10)
+
+                            const sorts = req.query.sorts ? req.query.sorts.split(',') : []
+                            if (sorts.length > 0) {
+                                query = query.sort(sorts)
+                            }
+
+                            const data = await query.select()
+                            const count = await query.count()
+
+                            const r: any[] = []
+                            for (const d of data) {
+                                r.push(await d.serialize())
+                            }
+                            resp = {
+                                count: count,
+                                result: r,
+                            }
+                        } else {
+                            const r = await model.where({ id: req.params.primary }).first()
+                            if (r === null) {
+                                resp = null
                             } else {
-                                resp = await model.request_primary(req.params.primary)
+                                resp = await r.serialize()
                             }
-                            break
-                        case 'POST':
-                            resp = await model.request_post(req.body)
-                            break
-                        case 'PUT':
-                            if (req.params.primary === undefined) {
-                                return new Response('Not Found', { status: 404 })
-                            }
-                            resp = await model.request_put(req.params.primary, req.body)
-                            break
-                        case 'PATCH':
-                            if (req.params.primary === undefined) {
-                                return new Response('Not Found', { status: 404 })
-                            }
-                            resp = await model.request_put(req.params.primary, req.body)
-                            break
-                        case 'DELETE':
-                            if (req.params.primary === undefined) {
-                                return new Response('Not Found', { status: 404 })
-                            }
-                            resp = await model.request_delete(req.params.primary)
-                            break
-                        default:
-                            return new Response('Method Not Allowed', { status: 405 })
+                        }
+                    } else if (req.method === 'POST') {
+                        const m = await model.deserialize(req.body)
+                        resp = await m.save()
+                        if (resp === undefined) {
+                            resp = null
+                        }
+                    } else if (req.method === 'PUT') {
+                        if (req.params.primary === undefined) {
+                            return new Response('Not Found', { status: 404 })
+                        }
+                        const m = await model.where({ id: req.params.primary }).first()
+                        resp = await m.set(req.body).save()
+                        if (resp === undefined) {
+                            resp = null
+                        }
+                    } else if (req.method === 'PATCH') {
+                        if (req.params.primary === undefined) {
+                            return new Response('Not Found', { status: 404 })
+                        }
+                        const m = await model.where({ id: req.params.primary }).first()
+                        if (m === null) {
+                            throw new Error('Not Found')
+                        }
+                        resp = await m.set(req.body).save()
+                        if (resp === undefined) {
+                            resp = null
+                        }
+                    } else if (req.method === 'DELETE') {
+                        if (req.params.primary === undefined) {
+                            return new Response('Not Found', { status: 404 })
+                        }
+                        const m = await model.where({ id: req.params.primary }).first()
+                        if (m === null) {
+                            throw new Error('Not Found')
+                        }
+                        resp = await m.delete()
+                        if (resp === undefined) {
+                            resp = null
+                        }
+                    } else {
+                        return new Response('Method Not Allowed', { status: 405 })
                     }
                 } else {
                     // Call view function

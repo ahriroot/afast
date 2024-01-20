@@ -1,11 +1,7 @@
+import { Options } from '../../types'
 import { Field } from './base'
 
-export class FieldFloat extends Field {
-    constructor(options: { show?: boolean; default?: number | null; nullable?: boolean }) {
-        super(options)
-    }
-}
-
-export const fieldFloat = (options: { show?: boolean; default?: number | null; nullable?: boolean } = {}) => {
-    return new FieldFloat(options)
+export const FloatField = (options: Options = { primary: false, show: true }) => {
+    options.type = 'Float'
+    return Field(options)
 }

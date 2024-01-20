@@ -1,33 +1,36 @@
-import { Model } from '../model'
-import { Options } from '../types'
+import type { Options } from '../../types'
 
-export class Field {
-    length?: number
-    show: boolean = true
-    primary: boolean = false
-    default?: any
-    nullable?: boolean = false
-    foreign?: typeof Model
-    references: string = 'id'
-    constructor(options: Options) {
-        if (options.length !== undefined) {
-            this.length = options.length
+export const Field = (
+    options: Options = {
+        primary: false,
+        show: true,
+        name: '',
+        property: '',
+    }
+) => {
+    return (target: any, propertyKey: any) => {
+        if (options.show === undefined) {
+            options.show = true
         }
-        if (options.show !== undefined) {
-            this.show = options.show
+        options.property = propertyKey
+        options.name = options.name || propertyKey
+
+        if (!['String', 'Number', 'Date'].includes(target.constructor.name)) {
+            let models = Reflect.getMetadata('models', global) || {}
+            if (!Object.keys(models).includes(target.constructor.name)) {
+                models[target.constructor.name] = target
+                Reflect.defineMetadata('models', models, global)
+            }
         }
-        if (options.primary !== undefined) {
-            this.primary = options.primary
+
+        if (options.type === 'Foreign' && options.foreign !== undefined) {
+            const f = new options.foreign()
+            options.references = f.primaryKey().name
         }
-        this.default = options.default
-        if (options.nullable !== undefined) {
-            this.nullable = options.nullable
-        }
-        if (options.foreign !== undefined) {
-            this.foreign = options.foreign
-        }
-        if (options.references !== undefined) {
-            this.references = options.references
-        }
+
+        let fields = Reflect.getMetadata('fields', target) || []
+        fields.push(options)
+
+        Reflect.defineMetadata('fields', fields, target)
     }
 }

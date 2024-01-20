@@ -1,48 +1,49 @@
 {
-  "name": "afast",
-  "version": "0.0.5",
-  "author": {
-    "name": "ahriknow",
-    "email": "ahriknow@ahriknow.com"
-  },
-  "license": "MIT",
-  "description": "A fast Web Framework by TypeScript",
-  "main": "index.ts",
-  "types": "src/types.d.ts",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/ahriroot/afast"
-  },
-  "keywords": [
-    "afast",
-    "web",
-    "framework",
-    "typescript",
-    "orm"
-  ],
-  "bugs": {
-    "url": "https://github.com/ahriroot/afast/issues"
-  },
-  "homepage": "https://github.com/ahriroot/afast/blob/dev/README.md",
-  "files": [
-    "plugins",
-    "src",
-    "utils",
-    "index.ts",
-    "LICENSE",
-    "package.json",
-    "README.en.md",
-    "README.md"
-  ],
-  "devDependencies": {
-    "bun-types": "^1.0.18"
-  },
-  "peerDependencies": {
-    "@types/pg": "^8.10.9",
-    "typescript": "^5.0.0",
-    "pg": "^8.11.3"
-  },
-  "dependencies": {
-    "reflect-metadata": "^0.2.1"
-  }
+    "name": "afast",
+    "version": "0.0.5",
+    "author": {
+        "name": "ahriknow",
+        "email": "ahriknow@ahriknow.com"
+    },
+    "license": "MIT",
+    "description": "A fast Web Framework by TypeScript",
+    "main": "index.ts",
+    "types": "types.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/ahriroot/afast"
+    },
+    "keywords": [
+        "afast",
+        "web",
+        "framework",
+        "typescript",
+        "orm"
+    ],
+    "bugs": {
+        "url": "https://github.com/ahriroot/afast/issues"
+    },
+    "homepage": "https://github.com/ahriroot/afast/blob/dev/README.md",
+    "files": [
+        "plugins",
+        "src",
+        "utils",
+        "index.ts",
+        "types.d.ts",
+        "LICENSE",
+        "package.json",
+        "README.en.md",
+        "README.md"
+    ],
+    "devDependencies": {
+        "bun-types": "^1.0.18"
+    },
+    "peerDependencies": {
+        "@types/pg": "^8.10.9",
+        "typescript": "^5.0.0",
+        "pg": "^8.11.3"
+    },
+    "dependencies": {
+        "reflect-metadata": "^0.2.1"
+    }
 }

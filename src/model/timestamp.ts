@@ -1,13 +1,7 @@
+import { Options } from '../../types'
 import { Field } from './base'
 
-export class FieldTimestamp extends Field {
-    constructor(options: { show?: boolean; default?: number | string | null; nullable?: boolean }) {
-        super(options)
-    }
-}
-
-export const fieldTimestamp = (
-    options: { show?: boolean; default?: number | string | null; nullable?: boolean } = {}
-) => {
-    return new FieldTimestamp(options)
+export const TimestampField = (options: Options = { primary: false, show: true }) => {
+    options.type = 'Timestamp'
+    return Field(options)
 }

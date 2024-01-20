@@ -1,38 +1,44 @@
+import { Options } from '../../types'
+
 const drop = (table: string) => {
     return `DROP TABLE IF EXISTS ${table}`
 }
 
-const create = (table: string, columns: { type: string; name: string; value: any }[]) => {
+const create = (table: string, columns: Options[]) => {
     let sql = `CREATE TABLE IF NOT EXISTS ${table} (`
     let f
     columns.forEach((column) => {
         let def = ''
-        if (column.value.default !== undefined) {
-            def = ` DEFAULT ${column.value.default}`
+        if (column.default !== undefined) {
+            if (typeof column.default === 'function') {
+                def = ` DEFAULT ${column.default()}`
+            } else {
+                def = ` DEFAULT ${column.default}`
+            }
         }
         switch (column.type) {
-            case 'FieldPrimary':
+            case 'Primary':
                 sql += `${column.name} INTEGER PRIMARY KEY AUTOINCREMENT, `
                 break
-            case 'FieldNumber':
+            case 'Number':
                 sql += `${column.name} INTEGER${def}, `
                 break
-            case 'FieldString':
+            case 'String':
                 sql += `${column.name} TEXT${def}, `
                 break
-            case 'FieldText':
+            case 'Text':
                 sql += `${column.name} TEXT${def}, `
                 break
-            case 'FieldBoolean':
+            case 'Boolean':
                 sql += `${column.name} BOOLEAN${def}, `
                 break
-            case 'FieldTimestamp':
+            case 'Timestamp':
                 sql += `${column.name} TIMESTAMP${def}, `
                 break
-            case 'FieldForeign':
-                f = new column.value.foreign()
+            case 'Foreign':
+                f = new column.foreign()
                 sql += `${column.name} INTEGER${def}, `
-                sql += `foreign key(${column.name}) references ${f.table()}(${column.value.references}), `
+                sql += `foreign key(${column.name}) references ${f._table}(${column.references}), `
                 break
             default:
                 sql += `${column.name} INTEGER${def}, `

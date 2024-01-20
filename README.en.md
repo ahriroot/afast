@@ -233,35 +233,52 @@ export class MRes {
 
 ```typescript
 // model/article.ts
-import { Default, Model, fieldPrimary, fieldString, fieldTimestamp, fieldForeign } from 'afast'
-import { UserModel } from './user'
+import { Model } from 'afast'
+import { DateField, ForeignField, PrimaryField, StringField, TextField } from 'afast'
+import { User } from './user'
 
-export class ArticleModel extends Model {
-    table() {
-        return 'article'
-    }
-    id = fieldPrimary()
-    title = fieldString()
-    content = fieldString()
-    created = fieldTimestamp({ default: Default.CURRENT_TIMESTAMP })
-    user = fieldForeign({ foreign: UserModel, references: 'id' })
+export class Article extends Model {
+    _table: string = 'article'
+
+    @PrimaryField()
+    id: number
+
+    @StringField()
+    title: string
+
+    @TextField()
+    content: string
+
+    @DateField({ default: Date.now })
+    created: Date
+
+    @ForeignField({ foreign: User, references: 'id' })
+    user: User
 }
 ```
 
 ```typescript
 // model/user.ts
-import { Default, Model, fieldNumber, fieldPrimary, fieldString, fieldTimestamp } from 'afast'
+import { Model } from 'afast'
+import { DateField, PrimaryField, StringField } from 'afast'
 
-export class UserModel extends Model {
-    table() {
-        return 'user'
-    }
-    id = fieldPrimary()
-    name = fieldString()
-    age = fieldNumber({ default: 0 })
-    username = fieldString()
-    password = fieldString({ show: false })
-    created = fieldTimestamp({ default: Default.CURRENT_TIMESTAMP })
+export class User extends Model {
+    _table: string = 'user'
+
+    @PrimaryField()
+    id: number
+
+    @StringField()
+    name: string
+
+    @StringField()
+    username: string
+
+    @StringField()
+    password: string
+
+    @DateField({ default: Date.now })
+    created: Date
 }
 ```
 

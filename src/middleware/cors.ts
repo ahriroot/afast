@@ -1,4 +1,4 @@
-import { ARequest, AResponse, Middleware } from '../types'
+import type { ARequest, AResponse, Middleware } from '../../types'
 import { CORSConfig } from './types'
 
 class CORS implements Middleware {
