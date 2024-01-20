@@ -80,7 +80,7 @@ export interface Middleware {
      * @param ws <afast.WsClient> websocket client (only for websocket)
      * @returns <afast.ARequest> request
      */
-    request(request: ARequest, ws?: WsClient): Promise<ARequest | AResponse>
+    request(request: ARequest, ws?: WsClient, global?: any): Promise<ARequest | AResponse>
 
     /**
      * Middleware for response after handler
@@ -88,7 +88,7 @@ export interface Middleware {
      * @param response <afast.AResponse> response
      * @returns <afast.AResponse> response
      */
-    response(request: ARequest, response: AResponse): Promise<AResponse>
+    response(request: ARequest, response: AResponse, global?: any): Promise<AResponse>
 }
 
 export type Handler = (request: ARequest, global?: typeof Config.global) => Promise<AResponse>

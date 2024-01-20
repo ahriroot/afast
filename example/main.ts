@@ -11,4 +11,6 @@ app.get('/', async (request) => {
 
 const server = app.run()
 
+console.log(app.mapJson())
+
 console.log(`Listening on ${server.url}`)

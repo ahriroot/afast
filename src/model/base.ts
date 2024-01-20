@@ -1,3 +1,4 @@
+import 'reflect-metadata'
 import type { Options } from '../../types'
 
 export const Field = (

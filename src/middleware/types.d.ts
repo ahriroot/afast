@@ -1,10 +1,12 @@
+import { ARequest, AResponse } from '../../types'
 import { Middleware } from '../types'
 
 export type CORSConfig = {
     origin?: string
     methods?: string[]
     headers?: string[]
-    credentials: boolean
+    credentials?: boolean
+    skip?: (request: ARequest, response: AResponse, global: any) => boolean
 }
 
 /**

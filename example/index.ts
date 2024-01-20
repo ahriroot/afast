@@ -1,5 +1,3 @@
-import 'reflect-metadata'
-
 import { App, Config, migrate, cors, ARequest } from 'afast'
 
 import { world1 } from './handler/world1'
@@ -18,7 +16,13 @@ import cfg from './config.toml'
 
 const app = new App()
 
-app.use(cors())
+app.use(
+    cors({
+        skip: (req, resp, global) => {
+            return req.headers.host === '127.0.0.1:3000'
+        },
+    })
+)
 
 app.get('/', async (request: ARequest) => {
     return {
@@ -35,10 +39,13 @@ g.viewId('/world5', new UserView())
 g.ws('/world6', new TestWebsocket(), [new M1()])
 
 console.log(JSON.stringify(app.mapJson(), null, 4))
+console.log(app.map())
 
 const config = cfg as Config
 
-const u = new User()
+config.global = {
+    name: 'afast',
+}
 
 console.log('migrate start')
 console.log(await migrate(config, [User, Article], false))

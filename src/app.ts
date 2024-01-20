@@ -2,6 +2,11 @@ import DBPool from './db'
 import { ARequest } from './request'
 import { Router } from './router'
 import { AResponse, Config, Handler, Middleware, View, Websocket, WsClient } from '../types'
+import { RecordNotFoundError } from './error'
+
+import sqliteDialect from './dialect/sqlite'
+import pgDialect from './dialect/pg'
+import mysqlDialect from './dialect/mysql'
 
 export class App {
     root: Router
@@ -45,10 +50,10 @@ export class App {
                         met = '\x1b[31mDELETE\x1b[0m'
                         break
                     case 'WEBSOCKET':
-                        met = '\x1b[36mDELETE\x1b[0m'
+                        met = '\x1b[36mWEBSOCKET\x1b[0m'
                         break
                     default:
-                        met = '\x1b[34mDELETE\x1b[0m'
+                        met = '\x1b[34mMETHOD\x1b[0m'
                         break
                 }
             }
@@ -229,6 +234,25 @@ export class App {
             file = '/index.html'
         }
         try {
+            for (let i = middlewares.length - 1; i >= 0; i--) {
+                const middleware = middlewares[i]
+                const r = await middleware.request(req, undefined, config.global)
+                if (r instanceof ARequest) {
+                    req = r
+                } else {
+                    if (r instanceof Response) {
+                        return r
+                    } else if (r instanceof Error) {
+                        return new Response('Internal Server Error', { status: 500 })
+                    }
+                    return new Response(JSON.stringify(r || null), {
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                    })
+                }
+            }
+
             const read = Bun.file(config.static + file)
             if (!(await read.exists())) {
                 return new Response('Not Found', { status: 404 })
@@ -243,7 +267,7 @@ export class App {
             // Call middlewares response
             for (let i = middlewares.length - 1; i >= 0; i--) {
                 const middleware = middlewares[i]
-                resp = await middleware.response(req, resp)
+                resp = await middleware.response(req, resp, config.global)
             }
 
             return resp
@@ -263,7 +287,7 @@ export class App {
 
         // Call middlewares request
         for (const middleware of middlewares) {
-            const r = await middleware.request(req)
+            const r = await middleware.request(req, undefined, config.global)
             if (r instanceof ARequest) {
                 req = r
             } else {
@@ -294,7 +318,7 @@ export class App {
         // Call middlewares response
         for (let i = middlewares.length - 1; i >= 0; i--) {
             const middleware = middlewares[i]
-            resp = await middleware.response(req, resp)
+            resp = await middleware.response(req, resp, config.global)
         }
 
         if (resp instanceof Response) {
@@ -327,7 +351,7 @@ export class App {
 
             // Call middlewares request
             for (const middleware of views.middlewares) {
-                const r = await middleware.request(req)
+                const r = await middleware.request(req, undefined, config.global)
                 if (r instanceof ARequest) {
                     req = r
                 } else {
@@ -414,7 +438,7 @@ export class App {
                         }
                         const m = await model.where({ id: req.params.primary }).first()
                         if (m === null) {
-                            throw new Error('Not Found')
+                            throw new RecordNotFoundError('Record not found')
                         }
                         resp = await m.set(req.body).save()
                         if (resp === undefined) {
@@ -426,7 +450,7 @@ export class App {
                         }
                         const m = await model.where({ id: req.params.primary }).first()
                         if (m === null) {
-                            throw new Error('Not Found')
+                            throw new RecordNotFoundError('Record not found')
                         }
                         resp = await m.delete()
                         if (resp === undefined) {
@@ -445,7 +469,7 @@ export class App {
 
             // Call middlewares response
             for (let i = middlewares.length - 1; i >= 0; i--) {
-                resp = await middlewares[i].response(req, resp)
+                resp = await middlewares[i].response(req, resp, config.global)
             }
 
             if (resp instanceof Response) {
@@ -512,7 +536,13 @@ export class App {
     ) {
         const self = this
         if (config.dialect && ['sqlite', 'pg', 'mysql'].includes(config.dialect)) {
-            global.dialect = require(`./dialect/${config.dialect}`).default
+            if (config.dialect === 'sqlite') {
+                global.dialect = sqliteDialect
+            } else if (config.dialect === 'pg') {
+                global.dialect = pgDialect
+            } else if (config.dialect === 'mysql') {
+                global.dialect = mysqlDialect
+            }
             if (config.database) {
                 global.pool = new DBPool(config.dialect, config.database)
             }

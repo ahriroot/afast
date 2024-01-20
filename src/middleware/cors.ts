@@ -6,11 +6,14 @@ class CORS implements Middleware {
         this.config = config
     }
 
-    async request(request: ARequest, ws?: any): Promise<ARequest | AResponse> {
+    async request(request: ARequest, ws?: any, global?: any): Promise<ARequest | AResponse> {
         return request
     }
 
-    async response(request: ARequest, response: AResponse): Promise<AResponse> {
+    async response(request: ARequest, response: AResponse, global?: any): Promise<AResponse> {
+        if (typeof this.config.skip === 'function' && this.config.skip(request, response, global)) {
+            return response
+        }
         if (response instanceof Response) {
             response.headers.set('Access-Control-Allow-Origin', this.config.origin || '*')
             response.headers.set(

@@ -284,7 +284,7 @@ export class User extends Model {
 
 ```typescript
 // index.ts
-import { App, Config, migrate, cors } from 'afast'
+import { App, Config, migrate, cors, ARequest } from 'afast'
 
 import { world1 } from './handler/world1'
 import { world2 } from './handler/world2'
@@ -295,16 +295,22 @@ import { TestWebsocket } from './handler/world6'
 import { M1 } from './middleware/m1'
 import { M2 } from './middleware/m2'
 import { MRes } from './middleware/mres'
-import { ArticleModel } from './model/article'
-import { UserModel } from './model/user'
+import { Article } from './model/article'
+import { User } from './model/user'
 
 import cfg from './config.toml'
 
 const app = new App()
 
-app.use(cors())
+app.use(
+    cors({
+        skip: (req, resp, global) => {
+            return req.headers.host === '127.0.0.1:3000'
+        },
+    })
+)
 
-app.get('/', async (request) => {
+app.get('/', async (request: ARequest) => {
     return {
         hello: 'world',
     }
@@ -319,11 +325,16 @@ g.viewId('/world5', new UserView())
 g.ws('/world6', new TestWebsocket(), [new M1()])
 
 console.log(JSON.stringify(app.mapJson(), null, 4))
+console.log(app.map())
 
 const config = cfg as Config
 
+config.global = {
+    name: 'afast',
+}
+
 console.log('migrate start')
-console.log(await migrate(config, [UserModel, ArticleModel], true))
+console.log(await migrate(config, [User, Article], false))
 console.log('migrate end')
 
 const server = app.run(config)

@@ -1,14 +1,20 @@
+import { Options } from '../../types'
+
 const drop = (table: string) => {
     return `DROP TABLE IF EXISTS ${table}`
 }
 
-const create = (table: string, columns: { type: string; name: string; value: any }[]) => {
+const create = (table: string, columns: Options[]) => {
     let sql = `CREATE TABLE IF NOT EXISTS ${table} (`
     let f
     columns.forEach((column) => {
         let def = ''
-        if (column.value.default !== undefined) {
-            def = ` DEFAULT ${column.value.default}`
+        if (column.default !== undefined) {
+            if (typeof column.default === 'function') {
+                def = ` DEFAULT ${column.default()}`
+            } else {
+                def = ` DEFAULT ${column.default}`
+            }
         }
         switch (column.type) {
             case 'FieldPrimary':
@@ -18,7 +24,7 @@ const create = (table: string, columns: { type: string; name: string; value: any
                 sql += `${column.name} INTEGER${def}, `
                 break
             case 'FieldString':
-                sql += `${column.name} VARCHAR(${column.value.length || 255})${def}, `
+                sql += `${column.name} VARCHAR(${column.length || 255})${def}, `
                 break
             case 'FieldText':
                 sql += `${column.name} TEXT${def}, `
@@ -30,9 +36,9 @@ const create = (table: string, columns: { type: string; name: string; value: any
                 sql += `${column.name} TIMESTAMP${def}, `
                 break
             case 'FieldForeign':
-                f = new column.value.foreign()
+                f = new column.foreign()
                 sql += `${column.name} INTEGER${def}, `
-                sql += `foreign key(${column.name}) references ${f.table()}(${column.value.references}), `
+                sql += `foreign key(${column.name}) references ${f._table}(${column.references}), `
                 break
             default:
                 sql += `${column.name} INTEGER${def}, `
