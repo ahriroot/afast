@@ -1,6 +1,6 @@
 {
     "name": "afast",
-    "version": "0.0.6",
+    "version": "0.0.7",
     "author": {
         "name": "ahriknow",
         "email": "ahriknow@ahriknow.com"
@@ -29,6 +29,7 @@
         "src",
         "utils",
         "index.ts",
+        "error.ts",
         "types.d.ts",
         "LICENSE",
         "package.json",

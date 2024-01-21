@@ -115,11 +115,11 @@ export const world4 = async (request: ARequest) => {
 
 ```typescript
 // handler/world5.ts
-import { Model, View } from 'afast'
-import { UserModel } from '../model/user'
+import { Model, View } from "afast"
+import { User } from "../model/user"
 
 export class UserView implements View {
-    model: Model = new UserModel()
+    model: typeof Model = User
     allowed: string[] = ['GET', 'POST', 'PUT', 'DELETE']
 }
 ```
@@ -140,6 +140,7 @@ export class TestWebsocket implements Websocket {
     }
     async close(ws: WsClient) {
         ws.send('server disconnect')
+        this.clients.splice(this.clients.indexOf(ws), 1)
         console.log('disconnect')
     }
     async message(ws: WsClient, msg: any) {

@@ -5,6 +5,6 @@ export const world4 = async (request: ARequest) => {
     const m2 = request.get('M2')
     console.log('Handler', m1, m2)
     return {
-        hello: 'world3',
+        hello: 'world4',
     }
 }

@@ -21,7 +21,7 @@ const autoClearStorage: Storage = newStorage(60) // Auto-clear every 60 seconds
 ### Setting Key-Value Pairs
 
 ```typescript
-storage.set('key1', { value: 'value1' }, 3600) // Expires in 1 hour
+storage.set('key1', 'value1', 3600) // Expires in 1 hour
 ```
 
 ### Getting Value

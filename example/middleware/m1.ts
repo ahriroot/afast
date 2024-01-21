@@ -15,8 +15,12 @@ export class M1 implements Middleware {
             response.headers.set('M1', 'M1 Value')
         } else if (response instanceof Error) {
             response.message += ' M1 Value'
-        } else {
+        } else if (response instanceof Object) {
             response['M1'] = 'M1 Value'
+        } else {
+            response = {
+                'M1': 'M1 Value',
+            }
         }
         console.log('M1 response')
         return response

@@ -12,6 +12,7 @@ export class TestWebsocket implements Websocket {
     }
     async close(ws: WsClient) {
         ws.send('server disconnect')
+        this.clients.splice(this.clients.indexOf(ws), 1)
         console.log('disconnect')
     }
     async message(ws: WsClient, msg: any) {

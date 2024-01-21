@@ -15,8 +15,12 @@ export class M2 {
             response.headers.set('M2', 'M2 Value')
         } else if (response instanceof Error) {
             response.message += ' M2 Value'
-        } else {
+        } else if (response instanceof Object) {
             response['M2'] = 'M2 Value'
+        } else {
+            response = {
+                'M2': 'M2 Value',
+            }
         }
         console.log('M2 response')
         return response
