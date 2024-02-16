@@ -61,6 +61,49 @@ export class Router {
         }
     }
 
+    dec = {
+        get: (paths: string[] | string, middlewares: Middleware[] = []) => {
+            return (target: any, propertyKey: string, descriptor: PropertyDescriptor) => {
+                this.get(paths, target[propertyKey].bind(target), middlewares)
+            }
+        },
+        post: (paths: string[] | string, middlewares: Middleware[] = []) => {
+            return (target: any, propertyKey: string, descriptor: PropertyDescriptor) => {
+                this.post(paths, target[propertyKey].bind(target), middlewares)
+            }
+        },
+        put: (paths: string[] | string, middlewares: Middleware[] = []) => {
+            return (target: any, propertyKey: string, descriptor: PropertyDescriptor) => {
+                this.put(paths, target[propertyKey].bind(target), middlewares)
+            }
+        },
+        patch: (paths: string[] | string, middlewares: Middleware[] = []) => {
+            return (target: any, propertyKey: string, descriptor: PropertyDescriptor) => {
+                this.patch(paths, target[propertyKey].bind(target), middlewares)
+            }
+        },
+        delete: (paths: string[] | string, middlewares: Middleware[] = []) => {
+            return (target: any, propertyKey: string, descriptor: PropertyDescriptor) => {
+                this.delete(paths, target[propertyKey].bind(target), middlewares)
+            }
+        },
+        view: (paths: string[] | string, middlewares: Middleware[] = []) => {
+            return (target: any, propertyKey: string, descriptor: PropertyDescriptor) => {
+                this.view(paths, target[propertyKey].bind(target), middlewares)
+            }
+        },
+        viewId: (paths: string[] | string, middlewares: Middleware[] = []) => {
+            return (target: any, propertyKey: string, descriptor: PropertyDescriptor) => {
+                this.viewId(paths, target[propertyKey].bind(target), middlewares)
+            }
+        },
+        ws: (paths: string[] | string, middlewares: Middleware[] = []) => {
+            return (target: any, propertyKey: string, descriptor: PropertyDescriptor) => {
+                this.ws(paths, target[propertyKey].bind(target), middlewares)
+            }
+        },
+    }
+
     /**
      * Http request get method
      * @param paths <string | string[]> request path

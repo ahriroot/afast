@@ -133,6 +133,19 @@ export class App {
         this.root.method(method, paths, handler, middlewares)
     }
 
+    dec = {
+        /**
+         * Http request get method
+         * @param paths <string | string[]> request path
+         * @param middlewares <afast.Middleware[]> middleware
+         */
+        get: (paths: string[] | string, middlewares: Middleware[] = []) => {
+            return (target: any, propertyKey: string, descriptor: PropertyDescriptor) => {
+                this.get(paths, target[propertyKey].bind(target), middlewares)
+            }
+        },
+    }
+
     /**
      * Http request get method
      * @param paths <string | string[]> request path
