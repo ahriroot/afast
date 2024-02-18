@@ -1,16 +1,17 @@
-
 import { ARequest, App } from '.'
 
 const app = new App()
 
-// app.get('/', async (request) => {
-//     return {
-//         hello: 'world',
-//     }
-// })
+const router = app.descriptor()
+
+app.get('/', async (request) => {
+    return {
+        hello: 'world',
+    }
+})
 
 class Test {
-    @app.dec.get('/:p:number/:q:string')
+    @router.get('/:p:number/:q:string')
     async index(request: ARequest) {
         console.log(request)
         return {
