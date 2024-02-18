@@ -10,8 +10,9 @@ const app = new App()
 // })
 
 class Test {
-    @app.dec.get('/')
+    @app.dec.get('/:p:number/:q:string')
     async index(request: ARequest) {
+        console.log(request)
         return {
             hello: 'world',
         }

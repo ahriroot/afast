@@ -62,41 +62,81 @@ export class Router {
     }
 
     dec = {
+        /**
+         * Http request get method
+         * @param paths <string | string[]> request path
+         * @param middlewares <afast.Middleware[]> middleware
+         */
         get: (paths: string[] | string, middlewares: Middleware[] = []) => {
             return (target: any, propertyKey: string, descriptor: PropertyDescriptor) => {
                 this.get(paths, target[propertyKey].bind(target), middlewares)
             }
         },
+        /**
+         * Http request post method
+         * @param paths <string | string[]> request path
+         * @param middlewares <afast.Middleware[]> middleware
+         */
         post: (paths: string[] | string, middlewares: Middleware[] = []) => {
             return (target: any, propertyKey: string, descriptor: PropertyDescriptor) => {
                 this.post(paths, target[propertyKey].bind(target), middlewares)
             }
         },
+        /**
+         * Http request put method
+         * @param paths <string | string[]> request path
+         * @param middlewares <afast.Middleware[]> middleware
+         */
         put: (paths: string[] | string, middlewares: Middleware[] = []) => {
             return (target: any, propertyKey: string, descriptor: PropertyDescriptor) => {
                 this.put(paths, target[propertyKey].bind(target), middlewares)
             }
         },
+        /**
+         * Http request patch method
+         * @param paths <string | string[]> request path
+         * @param middlewares <afast.Middleware[]> middleware
+         */
         patch: (paths: string[] | string, middlewares: Middleware[] = []) => {
             return (target: any, propertyKey: string, descriptor: PropertyDescriptor) => {
                 this.patch(paths, target[propertyKey].bind(target), middlewares)
             }
         },
+        /**
+         * Http request delete method
+         * @param paths <string | string[]> request path
+         * @param middlewares <afast.Middleware[]> middleware
+         */
         delete: (paths: string[] | string, middlewares: Middleware[] = []) => {
             return (target: any, propertyKey: string, descriptor: PropertyDescriptor) => {
                 this.delete(paths, target[propertyKey].bind(target), middlewares)
             }
         },
+        /**
+         * Http request view (auto generate CRUD)
+         * @param paths <string | string[]> request path
+         * @param middlewares <afast.Middleware[]> middleware
+         */
         view: (paths: string[] | string, middlewares: Middleware[] = []) => {
             return (target: any, propertyKey: string, descriptor: PropertyDescriptor) => {
                 this.view(paths, target[propertyKey].bind(target), middlewares)
             }
         },
+        /**
+         * Http request view (auto generate CRUD), auto reqister `${path}/:primary` router
+         * @param paths <string | string[]> request path
+         * @param middlewares <afast.Middleware[]> middleware
+         */
         viewId: (paths: string[] | string, middlewares: Middleware[] = []) => {
             return (target: any, propertyKey: string, descriptor: PropertyDescriptor) => {
                 this.viewId(paths, target[propertyKey].bind(target), middlewares)
             }
         },
+        /**
+         * Http request websocket
+         * @param paths <string | string[]> request path
+         * @param middlewares <afast.Middleware[]> middleware
+         */
         ws: (paths: string[] | string, middlewares: Middleware[] = []) => {
             return (target: any, propertyKey: string, descriptor: PropertyDescriptor) => {
                 this.ws(paths, target[propertyKey].bind(target), middlewares)
