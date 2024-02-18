@@ -215,6 +215,9 @@ export class App {
                     this.ws(paths, target[propertyKey].bind(target), middlewares)
                 }
             },
+            group: (paths: string[] | string, middlewares: Middleware[] = []) => {
+                return this.group(paths, middlewares).descriptor()
+            },
         }
     }
 

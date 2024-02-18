@@ -10,13 +10,12 @@ app.get('/', async (request) => {
     }
 })
 
+const g = router.group('/g')
+
 class Test {
-    @router.get('/:p:number/:q:string')
+    @g.get('/:p:number/:q:string')
     async index(request: ARequest) {
-        console.log(request)
-        return {
-            hello: 'world',
-        }
+        return request
     }
 }
 

@@ -143,6 +143,9 @@ export class Router {
                     this.ws(paths, target[propertyKey].bind(target), middlewares)
                 }
             },
+            group: (paths: string[] | string, middlewares: any[] = []) => {
+                return this.group(paths, middlewares).descriptor()
+            },
         }
     }
 
