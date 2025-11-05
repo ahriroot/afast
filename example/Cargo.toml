@@ -1,0 +1,8 @@
+[package]
+name = "example"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+afast = { path = "../afast", features = ["http", "ws", "tcp"] }
+tokio = { version = "1", features = ["full"] }

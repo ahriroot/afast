@@ -1,0 +1,22 @@
+[package]
+name = "afast-macros"
+version = "0.0.1"
+edition = "2024"
+authors = ["ahriknow <ahriknow@ahriknow.com>"]
+description = "AFast: high-performance async Rust web framework with HTTP, WS, TCP support, automatic client generation, validation, and documentation."
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/ahriroot/afast"
+homepage = "https://github.com/ahriroot/afast"
+documentation = "https://docs.rs/afast"
+readme = "README.md"
+keywords = ["framework", "async", "web", "tcp", "codegen"]
+categories = ["asynchronous", "network-programming", "web-programming"]
+rust-version = "1.90"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "1.0"
+quote = "1.0"
+syn = { version = "2.0", features = ["full"] }

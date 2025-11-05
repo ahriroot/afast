@@ -1,0 +1,54 @@
+// @ts-nocheck
+
+class AFastByteBuffer{private encoder:TextEncoder;private buf:ArrayBuffer;private view:DataView;private length:number;constructor(size:number=64){this.encoder=new TextEncoder();this.buf=new ArrayBuffer(size);this.view=new DataView(this.buf);this.length=0}private ensure(size:number):void{if(this.length+size>this.buf.byteLength){let newSize=this.buf.byteLength*2;while(newSize<this.length+size)newSize*=2;const newBuf=new ArrayBuffer(newSize);new Uint8Array(newBuf).set(new Uint8Array(this.buf,0,this.length));this.buf=newBuf;this.view=new DataView(this.buf)}}pBy(b:number):void{this.ensure(1);this.view.setUint8(this.length,b);this.length+=1}pBys(arr:Uint8Array):void{this.ensure(arr.length);new Uint8Array(this.buf,this.length,arr.length).set(arr);this.length+=arr.length}pB(b:boolean):void{this.pBy(b?1:0)}pI8(n:number):void{this.ensure(1);this.view.setInt8(this.length,n);this.length+=1}pU8(n:number):void{this.ensure(1);this.view.setUint8(this.length,n);this.length+=1}pI16(n:number):void{this.ensure(2);this.view.setInt16(this.length,n,false);this.length+=2}pU16(n:number):void{this.ensure(2);this.view.setUint16(this.length,n,false);this.length+=2}pI32(n:number):void{this.ensure(4);this.view.setInt32(this.length,n,false);this.length+=4}pU32(n:number):void{this.ensure(4);this.view.setUint32(this.length,n,false);this.length+=4}pI64(n:number):void{this.ensure(8);const high=Math.floor(n/2**32);const low=n>>>0;this.view.setInt32(this.length,high,false);this.view.setInt32(this.length+4,low,false);this.length+=8}pU64(n:number):void{this.ensure(8);const high=Math.floor(n/2**32);const low=n>>>0;this.view.setUint32(this.length,high,false);this.view.setUint32(this.length+4,low,false);this.length+=8}pI128(n:number):void{this.ensure(16);const highHigh=0;const highLow=Math.floor(n/2**32);const lowHigh=n>>>0;const lowLow=0;this.view.setUint32(this.length,highHigh,false);this.view.setUint32(this.length+4,highLow,false);this.view.setUint32(this.length+8,lowHigh,false);this.view.setUint32(this.length+12,lowLow,false);this.length+=16}pU128(n:number):void{this.ensure(16);const highHigh=0;const highLow=Math.floor(n/2**32);const lowHigh=n>>>0;const lowLow=0;this.view.setUint32(this.length,highHigh,false);this.view.setUint32(this.length+4,highLow,false);this.view.setUint32(this.length+8,lowHigh,false);this.view.setUint32(this.length+12,lowLow,false);this.length+=16}pF32(n:number):void{this.ensure(4);this.view.setFloat32(this.length,n,false);this.length+=4}pF64(n:number):void{this.ensure(8);this.view.setFloat64(this.length,n,false);this.length+=8}pS(str:string):void{const bytes=this.encoder.encode(str);this.pU32(bytes.length);this.pBys(bytes)}tU8A():Uint8Array{return new Uint8Array(this.buf,0,this.length)}}
+class AFastByteReader{private buf:ArrayBuffer;private view:DataView;private offset:number;constructor(uint8Array:Uint8Array){this.buf=uint8Array.buffer as ArrayBuffer;this.view=new DataView(this.buf,uint8Array.byteOffset,uint8Array.byteLength);this.offset=0}private check(len:number):void{if(this.offset+len>this.view.byteLength){throw new Error(`Out of range:trying to read ${len}bytes,but only ${this.view.byteLength-this.offset}left`)}}rBy():number{this.check(1);const v=this.view.getUint8(this.offset);this.offset+=1;return v}rBys(len:number):Uint8Array{this.check(len);const bytes=new Uint8Array(this.view.buffer,this.view.byteOffset+this.offset,len);this.offset+=len;return bytes}rB():boolean{const v=this.rBy();return v!==0}rI8():number{this.check(1);const v=this.view.getInt8(this.offset);this.offset+=1;return v}rU8():number{this.check(1);const v=this.view.getUint8(this.offset);this.offset+=1;return v}rI16():number{this.check(2);const v=this.view.getInt16(this.offset,false);this.offset+=2;return v}rU16():number{this.check(2);const v=this.view.getUint16(this.offset,false);this.offset+=2;return v}rI32():number{this.check(4);const v=this.view.getInt32(this.offset,false);this.offset+=4;return v}rU32():number{this.check(4);const v=this.view.getUint32(this.offset,false);this.offset+=4;return v}rI64():number{this.check(8);const v=this.view.getBigInt64(this.offset,false);this.offset+=8;return Number(v)}rU64():number{this.check(8);const v=this.view.getBigUint64(this.offset,false);this.offset+=8;return Number(v)}rI128():number{this.check(16);const high=this.view.getBigInt64(this.offset,false);const low=this.view.getBigUint64(this.offset+8,false);this.offset+=16;return Number((high<<64n)|low)}rU128():number{this.check(16);const high=this.view.getBigUint64(this.offset,false);const low=this.view.getBigUint64(this.offset+8,false);this.offset+=16;return Number((high<<64n)|low)}rF32():number{this.check(4);const v=this.view.getFloat32(this.offset,false);this.offset+=4;return v}rF64():number{this.check(8);const v=this.view.getFloat64(this.offset,false);this.offset+=8;return v}rS():string{const len=this.rU32();const bytes=this.rBys(len);const decoder=new TextDecoder();return decoder.decode(bytes)}eof():boolean{return this.offset>=this.view.byteLength}}
+class AFastValidateError extends Error{constructor(message:string){super(message);this.name=new.target.name;if((Error as any).captureStackTrace){(Error as any).captureStackTrace(this,new.target)}}}
+type ClientCall=(data: Uint8Array)=>Promise<Uint8Array>;
+type ClientOptions={call:ClientCall;[key: string]:any;}
+
+
+class AFastClient {
+_options:ClientOptions;_call:ClientCall;
+
+constructor(options:ClientOptions){this._options=options;if(!options.call){throw new Error('call is required');};this._call=options.call}
+/**
+ * Get user information
+ * @param {{sex:{_type:0,id:number,}|{_type:1,name:string,},id:number,name:string,age:number,hobbies:Array<{id:number,name:string,}>,tags:Array<string>,gender:boolean|null,}} request
+ * @returns {{sex:{_type:0,id:number,}|{_type:1,name:string,},id:number,name:string,age:number,hobbies:Array<{id:number,name:string,}>,tags:Array<string>,gender:boolean|null,}}
+ */
+get_user = async (request:{sex:{_type:0,id:number,}|{_type:1,name:string,},id:number,name:string,age:number,hobbies:Array<{id:number,name:string,}>,tags:Array<string>,gender:boolean|null,}): Promise<{sex:{_type:0,id:number,}|{_type:1,name:string,},id:number,name:string,age:number,hobbies:Array<{id:number,name:string,}>,tags:Array<string>,gender:boolean|null,}> => {if (request.age === 0) throw new AFastValidateError('name is required');if (request.age < 1) throw new AFastValidateError('name must be at least 1 character long');if (request.age > 100) throw new AFastValidateError('name must be at most 10 characters long');const _b1 = new AFastByteBuffer();_b1.pU32(0);_b1.pU32(request.sex._type);switch (request.sex._type) {case 0:_b1.pI64(request.sex.id);break;case 1:_b1.pS(request.sex.name);break;default:throw new Error('unknown variant');}_b1.pI64(request.id);_b1.pS(request.name);_b1.pU32(request.age);_b1.pU32(request.hobbies.length);for(let __item_0 of request.hobbies){_b1.pI64(__item_0.id);_b1.pS(__item_0.name);}_b1.pU32(request.tags.length);for(let __item_0 of request.tags){_b1.pS(__item_0);}if(request.gender === null)_b1.pU8(0);else{_b1.pU8(1);_b1.pB(request.gender);}const _b2 = new AFastByteReader(await this._call(_b1.tU8A()));_b2.rI32();const response = {sex:{...(function(){switch (_b2.rU32()) {case 0: return {id:_b2.rI64(),};case 1: return {name:_b2.rS(),};default:throw new Error('unknown variant');}}())},id:_b2.rI64(),name:_b2.rS(),age:_b2.rU32(),hobbies:Array.from({length:_b2.rU32()},()=>({id:_b2.rI64(),name:_b2.rS(),})),tags:Array.from({length:_b2.rU32()},()=>(_b2.rS())),gender:_b2.rU8() === 0 ? null : _b2.rB(),};return response as any;};
+/**
+ * Get user by id
+ * @param {{id:number,}} request
+ * @returns {{id:number,name:string,}}
+ */
+get_id = async (request:{id:number,}): Promise<{id:number,name:string,}> => {const _b1 = new AFastByteBuffer();_b1.pU32(1);_b1.pI64(request.id);const _b2 = new AFastByteReader(await this._call(_b1.tU8A()));_b2.rI32();const response = {id:_b2.rI64(),name:_b2.rS(),};return response as any;};
+}
+
+const client = new AFastClient({
+    call: async (buf: Uint8Array):Promise<Uint8Array> => {
+        console.log(buf);
+        const response = await fetch('http://127.0.0.1:8080/api', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/octet-stream',
+            },
+            body: buf as any,
+        });
+        if (!response.ok) {
+            const body = await response.text();
+            throw new Error(`HTTP error: ${response.status} ${response.statusText} ${body}`);
+        }
+        const data = await response.arrayBuffer();
+        return new Uint8Array(data);
+    },
+});
+
+const main = async () => {
+    let res1 = await client.get_user({ id: 1, name: 'Alice', age: 20, hobbies: [{ id: 2, name: "reaading" }], tags: ["tag1", "tag2"], gender: true, sex: { _type: 1, name: "1" } })
+    console.log(res1);
+    let res2 = await client.get_id({ id: 1 });
+    console.log(res2);
+};
+
+main();
