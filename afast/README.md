@@ -1,6 +1,6 @@
 # AFast
 
-**AFast** is a high-performance asynchronous Rust web framework designed
+**AFast** is a high-performance asynchronous Rust backend framework designed
 to simplify building networked applications. It supports multiple protocols
 via feature flags and provides automatic code generation for clients
 (TypeScript and JavaScript), API documentation, and field validation.
@@ -63,14 +63,14 @@ struct Request {
     id: i64,
     name: String,
     #[validate(
-        required("age is required"),
-        min(1, "age must be greater than or equal to 1"),
-        max(100, "age must be less than or equal to 100")
+        required("name is required"),
+        min(1, "name must be at least 1 character long"),
+        max(100, "name must be at most 10 characters long")
     )]
     age: u32,
     hobbies: Vec<Hobby>,
     tags: Vec<String>,
-    is_active: Option<bool>,
+    gender: Option<bool>,
     sex: Sex,
 }
 
@@ -88,20 +88,29 @@ pub struct Response {
     age: u32,
     hobbies: Vec<Hobby>,
     tags: Vec<String>,
-    is_active: Option<bool>,
+    gender: Option<bool>,
 }
 
 #[handler(desc("Get user information"))]
-async fn get_user(_state: Arc<Mutex<String>>, req: Request) -> Result<Response, Error> {
+async fn get_user(
+    _state: Arc<Mutex<String>>,
+    header: Header,
+    req: Request,
+) -> Result<Response, Error> {
     Ok(Response {
         id: req.id,
         name: req.name.clone(),
         age: req.age,
         hobbies: req.hobbies.clone(),
         tags: req.tags.clone(),
-        is_active: req.is_active,
+        gender: req.gender,
         sex: req.sex.clone(),
     })
+}
+
+async fn auth(_state: Arc<Mutex<String>>, header: Header) -> Result<(), Error> {
+    println!("Token: {:?}", header);
+    Ok(())
 }
 
 #[derive(Debug, AFastData)]
@@ -115,24 +124,30 @@ struct Resp2 {
     name: String,
 }
 
-#[handler(desc("Get user by id"))]
-async fn get_id(_state: Arc<Mutex<String>>, req: Req2) -> Result<Resp2, Error> {
+#[handler(desc("Get user by id"), mws("auth"))]
+async fn get_id(_state: Arc<Mutex<String>>, header: Header, req: Req2) -> Result<Resp2, Error> {
     Ok(Resp2 {
         id: req.id,
         name: "John".to_string(),
     })
 }
 
+#[derive(Debug, Clone, AFastData)]
+struct Header {
+    id: u32,
+}
+
 #[tokio::main]
 async fn main() {
     let state = Arc::new(Mutex::new("".to_string()));
 
-    let server = AFast::new(state, register! { get_user, get_id });
+    let server = AFast::<Mutex<String>, Header>::new(state, register! { get_user, get_id })
+        .set_js(true) // Auto generate JS client
+        .set_doc(true); // Auto generate documentation
 
-    server.serve(&"127.0.0.1:8080").await.unwrap();
-
-    // Alternatively, you can start the server with TCP and HTTP/WS support:
-    // first argument is TCP listening address, second argument is HTTP/WS listening address
-    // server.serve(&"127.0.0.1:8080", &"127.0.0.1:8081").await.unwrap();
+    server
+        .serve(&"127.0.0.1:8080", &"127.0.0.1:8081")
+        .await
+        .unwrap();
 }
 ```

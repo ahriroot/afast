@@ -1,5 +1,5 @@
 use proc_macro::TokenStream;
-use quote::quote;
+use quote::{format_ident, quote};
 use syn::{
     FnArg, ItemFn, LitStr, Meta, PatType, ReturnType, Type, parse_macro_input,
     punctuated::Punctuated, token,
@@ -13,10 +13,11 @@ use syn::{
 ///
 /// The macro generates:
 /// - a renamed async function `__inner_xxx` preserving the original logic
-/// - a wrapper function returning a `(String, String, Box<Handler>)` suitable for AFast registration
+/// - a wrapper function returning a `(String, String, Vec<Box<Middleware>>, Box<Handler>)` suitable for AFast registration
 pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
     let args = parse_macro_input!(attr with Punctuated<Meta, token::Comma>::parse_terminated);
     let mut desc = String::new();
+    let mut ms: Vec<String> = Vec::new();
     for arg in args {
         match arg {
             Meta::Path(_) => {}
@@ -25,6 +26,18 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
                     match meta.parse_args::<LitStr>() {
                         Ok(lit) => {
                             desc = format!(" * {}\n", lit.value());
+                        }
+                        Err(_) => {}
+                    }
+                }
+                if meta.path.is_ident("mws") {
+                    match meta.parse_args::<LitStr>() {
+                        Ok(lit) => {
+                            ms = lit
+                                .value()
+                                .split(",")
+                                .map(|s| s.trim().to_string())
+                                .collect();
                         }
                         Err(_) => {}
                     }
@@ -42,19 +55,22 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
     let sig = &input.sig;
 
     let mut state_ty = None;
+    let mut header_ty = None;
     let mut req_ty = None;
 
     for (i, arg) in sig.inputs.iter().enumerate() {
         if let FnArg::Typed(PatType { ty, .. }) = arg {
             match i {
                 0 => state_ty = Some(ty.clone()),
-                1 => req_ty = Some(ty.clone()),
+                1 => header_ty = Some(ty.clone()),
+                2 => req_ty = Some(ty.clone()),
                 _ => {}
             }
         }
     }
 
     let state_ty = state_ty.expect("expected state parameter");
+    let header_ty = header_ty.expect("expected header parameter");
     let req_ty = req_ty.expect("expected request parameter");
 
     let ret_type = match &sig.output {
@@ -94,9 +110,26 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
     let inner_ident = syn::Ident::new(&format!("__inner_{}", ident), ident.span());
     let func_name = ident.to_string();
 
+    let mws: Vec<_> = ms
+        .iter()
+        .map(|s| {
+            let ident = format_ident!("{}", s);
+            quote! {
+                Box::new(|state: #state_ty, header: #header_ty| {
+                    Box::pin(async move {
+                        match #ident(state, header).await {
+                            Ok(_) => Ok(()),
+                            Err(e) => Err(afast::Error::server_error(500, e.to_string())),
+                        }
+                    })
+                })
+            }
+        })
+        .collect();
+
     let expanded = quote! {
         /// The inner async function preserving the original user logic.
-        #vis async fn #inner_ident(state: #state_ty, req: #req_ty) -> #ret_type {
+        #vis async fn #inner_ident(state: #state_ty, header: #header_ty, req: #req_ty) -> #ret_type {
             #block
         }
 
@@ -107,9 +140,18 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
         #vis fn #ident(id: u32) -> (
             String,
             String,
+            Vec<Box<
+                dyn Fn(
+                    #state_ty,
+                    #header_ty,
+                ) -> std::pin::Pin<
+                    Box<dyn std::future::Future<Output = Result<(), afast::Error>> + Send>
+                > + Send + Sync + 'static,
+            >>,
             Box<
                 dyn Fn(
                     #state_ty,
+                    #header_ty,
                     &[u8],
                 ) -> std::pin::Pin<
                     Box<dyn std::future::Future<Output = Result<Vec<u8>, afast::Error>> + Send>
@@ -124,6 +166,9 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
             let code = #req_ty::to_js_validate("request").to_string();
             js.push(code);
             js.push("const _b1 = new AFastByteBuffer();".to_string());
+            js.push("const _header = await this._header();".to_string());
+            let code = #header_ty::to_js("_header").to_string();
+            js.push(code);
             js.push(format!("_b1.pU32({});", id));
             let code = #req_ty::to_js("request").to_string();
             js.push(code);
@@ -142,6 +187,9 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
             let code = #req_ty::to_js_validate("request").to_string();
             ts.push(code);
             ts.push("const _b1 = new AFastByteBuffer();".to_string());
+            ts.push("const _header = await this._header();".to_string());
+            let code = #header_ty::to_js("_header").to_string();
+            ts.push(code);
             ts.push(format!("_b1.pU32({});", id));
             let code = #req_ty::to_js("request").to_string();
             ts.push(code);
@@ -155,13 +203,14 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
             (
                 js.join(""),
                 ts.join(""),
-                Box::new(|state: #state_ty, req: &[u8]| {
+                vec![#(#mws)*],
+                Box::new(|state: #state_ty, header: #header_ty, req: &[u8]| {
                     let req = #req_ty::from_bytes(req);
                     Box::pin(async move {
                         match req {
                             Ok((req, _)) => {
                                 req.validate().map_err(|e| afast::Error::client_error(400, e.join(",")))?;
-                                match #inner_ident(state, req).await {
+                                match #inner_ident(state, header, req).await {
                                     Ok(resp) => Ok(resp.to_bytes()),
                                     Err(e) => Err(afast::Error::server_error(500, e.to_string())),
                                 }
@@ -192,12 +241,13 @@ pub fn register(input: TokenStream) -> TokenStream {
 
         registrations.push(quote! {
             {
-                let (js, ts, func) = #func(#id);
+                let (js, ts, middlewares, func) = #func(#id);
                 afast::HandlerGeneric {
                     id: #id,
                     name: #name,
                     js,
                     ts,
+                    middlewares,
                     func,
                 }
             }

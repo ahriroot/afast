@@ -10,7 +10,6 @@ enum Sex {
 
 #[derive(Debug, Clone, AFastData)]
 struct Request {
-    sex: Sex,
     id: i64,
     name: String,
     #[validate(
@@ -19,13 +18,14 @@ struct Request {
         max(100, "name must be at most 10 characters long")
     )]
     age: u32,
-    hobbies: Vec<Request2>,
+    hobbies: Vec<Hobby>,
     tags: Vec<String>,
     gender: Option<bool>,
+    sex: Sex,
 }
 
 #[derive(Debug, Clone, AFastData)]
-struct Request2 {
+struct Hobby {
     id: i64,
     name: String,
 }
@@ -36,13 +36,17 @@ pub struct Response {
     id: i64,
     name: String,
     age: u32,
-    hobbies: Vec<Request2>,
+    hobbies: Vec<Hobby>,
     tags: Vec<String>,
     gender: Option<bool>,
 }
 
 #[handler(desc("Get user information"))]
-async fn get_user(_state: Arc<Mutex<String>>, req: Request) -> Result<Response, Error> {
+async fn get_user(
+    _state: Arc<Mutex<String>>,
+    header: Header,
+    req: Request,
+) -> Result<Response, Error> {
     Ok(Response {
         id: req.id,
         name: req.name.clone(),
@@ -52,6 +56,11 @@ async fn get_user(_state: Arc<Mutex<String>>, req: Request) -> Result<Response, 
         gender: req.gender,
         sex: req.sex.clone(),
     })
+}
+
+async fn auth(_state: Arc<Mutex<String>>, header: Header) -> Result<(), Error> {
+    println!("Token: {:?}", header);
+    Ok(())
 }
 
 #[derive(Debug, AFastData)]
@@ -65,21 +74,29 @@ struct Resp2 {
     name: String,
 }
 
-#[handler(desc("Get user by id"))]
-async fn get_id(_state: Arc<Mutex<String>>, req: Req2) -> Result<Resp2, Error> {
+#[handler(desc("Get user by id"), mws("auth"))]
+async fn get_id(_state: Arc<Mutex<String>>, header: Header, req: Req2) -> Result<Resp2, Error> {
     Ok(Resp2 {
         id: req.id,
         name: "John".to_string(),
     })
 }
 
+#[derive(Debug, Clone, AFastData)]
+struct Header {
+    id: u32,
+}
+
 #[tokio::main]
 async fn main() {
     let state = Arc::new(Mutex::new("".to_string()));
 
-    let server = AFast::new(state, register! { get_user, get_id })
+    let server = AFast::<Mutex<String>, Header>::new(state, register! { get_user, get_id })
         .set_js(true) // Auto generate JS client
         .set_doc(true); // Auto generate documentation
 
-    server.serve(&"127.0.0.1:8080", &"127.0.0.1:8081").await.unwrap();
+    server
+        .serve(&"127.0.0.1:8080", &"127.0.0.1:8081")
+        .await
+        .unwrap();
 }

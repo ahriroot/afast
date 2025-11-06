@@ -1,16 +1,16 @@
 //! # AFast
-//! 
-//! **AFast** is a high-performance asynchronous Rust web framework designed
+//!
+//! **AFast** is a high-performance asynchronous Rust backend framework designed
 //! to simplify building networked applications. It supports multiple protocols
 //! via feature flags and provides automatic code generation for clients
 //! (TypeScript and JavaScript), API documentation, and field validation.
-//! 
+//!
 //! ## Instrutions
-//! 
+//!
 //! ### Supported Protocol Features
-//! 
+//!
 //! You can enable the following features in your `Cargo.toml`:
-//! 
+//!
 //! - `http` - enable HTTP support
 //!   - `/api` - HTTP API endpoint
 //!   - `/js` - JavaScript client
@@ -18,35 +18,35 @@
 //! - `ws` - enable WebSocket support
 //!   - `/ws` - WebSocket endpoint
 //! - `tcp` - enable TCP support
-//! 
+//!
 //! **Note on TCP usage:**  
-//! 
+//!
 //! If the `tcp` feature is enabled, the `AFast::serve` method takes two arguments:
-//! 
+//!
 //! 1. The TCP address to listen on (`"127.0.0.1:8080"`).  
 //! 2. The HTTP/WS address (`"127.0.0.1:8081"`) for web clients and generated JS/TS clients.
-//! 
+//!
 //! This allows you to run TCP and HTTP/WS servers simultaneously in the same application.
-//! 
+//!
 //! ### Key Features
-//! 
+//!
 //! - Automatic generation of TypeScript/JavaScript clients for your API
 //! - Automatic generation of documentation
 //! - Automatic field validation, including custom rules
 //! - Async handler functions with state management
 //! - Flexible multi-protocol support: HTTP, WS, TCP
-//! 
+//!
 //! ### Upcoming Features / Development Plan
-//! 
+//!
 //! - Nested structure validation for complex types
 //! - Enable or disable js / ts / document by feautre flags
 //! - Add command for generating client code
 //! - Generate client code for additional languages: Java, Kotlin, C#, Rust, etc.
 //! - Improved code generation templates for easier integration
 //! - Enhanced error handling and validation reporting
-//! 
+//!
 //! ## Example
-//! 
+//!
 //! ```rust
 //! use std::sync::{Arc, Mutex};
 //! 
@@ -63,14 +63,14 @@
 //!     id: i64,
 //!     name: String,
 //!     #[validate(
-//!         required("age is required"),
-//!         min(1, "age must be greater than or equal to 1"),
-//!         max(100, "age must be less than or equal to 100")
+//!         required("name is required"),
+//!         min(1, "name must be at least 1 character long"),
+//!         max(100, "name must be at most 10 characters long")
 //!     )]
 //!     age: u32,
 //!     hobbies: Vec<Hobby>,
 //!     tags: Vec<String>,
-//!     is_active: Option<bool>,
+//!     gender: Option<bool>,
 //!     sex: Sex,
 //! }
 //! 
@@ -88,20 +88,29 @@
 //!     age: u32,
 //!     hobbies: Vec<Hobby>,
 //!     tags: Vec<String>,
-//!     is_active: Option<bool>,
+//!     gender: Option<bool>,
 //! }
 //! 
 //! #[handler(desc("Get user information"))]
-//! async fn get_user(_state: Arc<Mutex<String>>, req: Request) -> Result<Response, Error> {
+//! async fn get_user(
+//!     _state: Arc<Mutex<String>>,
+//!     header: Header,
+//!     req: Request,
+//! ) -> Result<Response, Error> {
 //!     Ok(Response {
 //!         id: req.id,
 //!         name: req.name.clone(),
 //!         age: req.age,
 //!         hobbies: req.hobbies.clone(),
 //!         tags: req.tags.clone(),
-//!         is_active: req.is_active,
+//!         gender: req.gender,
 //!         sex: req.sex.clone(),
 //!     })
+//! }
+//! 
+//! async fn auth(_state: Arc<Mutex<String>>, header: Header) -> Result<(), Error> {
+//!     println!("Token: {:?}", header);
+//!     Ok(())
 //! }
 //! 
 //! #[derive(Debug, AFastData)]
@@ -115,28 +124,34 @@
 //!     name: String,
 //! }
 //! 
-//! #[handler(desc("Get user by id"))]
-//! async fn get_id(_state: Arc<Mutex<String>>, req: Req2) -> Result<Resp2, Error> {
+//! #[handler(desc("Get user by id"), mws("auth"))]
+//! async fn get_id(_state: Arc<Mutex<String>>, header: Header, req: Req2) -> Result<Resp2, Error> {
 //!     Ok(Resp2 {
 //!         id: req.id,
 //!         name: "John".to_string(),
 //!     })
 //! }
 //! 
+//! #[derive(Debug, Clone, AFastData)]
+//! struct Header {
+//!     id: u32,
+//! }
+//! 
 //! #[tokio::main]
 //! async fn main() {
 //!     let state = Arc::new(Mutex::new("".to_string()));
 //! 
-//!     let server = AFast::new(state, register! { get_user, get_id });
+//!     let server = AFast::<Mutex<String>, Header>::new(state, register! { get_user, get_id })
+//!         .set_js(true) // Auto generate JS client
+//!         .set_doc(true); // Auto generate documentation
 //! 
-//!     server.serve(&"127.0.0.1:8080").await.unwrap();
-//! 
-//!     // Alternatively, you can start the server with TCP and HTTP/WS support:
-//!     // first argument is TCP listening address, second argument is HTTP/WS listening address
-//!     // server.serve(&"127.0.0.1:8080", &"127.0.0.1:8081").await.unwrap();
+//!     server
+//!         .serve(&"127.0.0.1:8080", &"127.0.0.1:8081")
+//!         .await
+//!         .unwrap();
 //! }
 //! ```
-//! 
+//!
 
 use std::sync::Arc;
 
@@ -162,20 +177,30 @@ pub trait AFastData: Sized {
 ///
 /// Each handler receives shared state `Arc<T>` and a binary request slice `&[u8]`,
 /// and returns a Future that resolves to a binary response `Vec<u8>` or an `Error`.
-pub type Handler<T> = dyn Fn(
+pub type Handler<T, H> = dyn Fn(
         Arc<T>,
+        H,
         &[u8],
     ) -> std::pin::Pin<
         Box<dyn std::future::Future<Output = Result<Vec<u8>, Error>> + Send + 'static>,
     > + Send
     + Sync;
 
+pub type Middleware<T, H> = dyn Fn(
+        Arc<T>,
+        H,
+    )
+        -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), Error>> + Send + 'static>>
+    + Send
+    + Sync;
+
 /// Generic handler struct that wraps a user-defined handler function.
 ///
 /// Contains a handler ID, name, JS request code, TS request code, and the processing function.
-pub struct HandlerGeneric<T>
+pub struct HandlerGeneric<T, H>
 where
     T: Send + Sync + 'static,
+    H: AFastData,
 {
     /// Unique handler ID
     pub id: u32,
@@ -185,30 +210,34 @@ where
     pub js: String,
     /// TS client
     pub ts: String,
+    /// Middleware functions
+    pub middlewares: Vec<Box<Middleware<T, H>>>,
     /// Actual processing function
-    pub func: Box<Handler<T>>,
+    pub func: Box<Handler<T, H>>,
 }
 
 /// Core AFast service struct.
 ///
 /// Maintains shared state and registered handlers.
-pub struct AFast<T>
+pub struct AFast<T, H>
 where
     T: Send + Sync + 'static,
+    H: AFastData + Clone + Send + Sync + 'static,
 {
     /// Shared application state
     state: Arc<T>,
     /// Registered handler list
-    handlers: Arc<Vec<HandlerGeneric<T>>>,
+    handlers: Arc<Vec<HandlerGeneric<T, H>>>,
     /// Flag to output JS client
     js: bool,
     /// Flag to output documentation
     doc: bool,
 }
 
-impl<T> AFast<T>
+impl<T, H> AFast<T, H>
 where
     T: Send + Sync + 'static,
+    H: AFastData + Clone + Send + Sync + 'static,
 {
     /// Create a new AFast service instance
     ///
@@ -218,7 +247,7 @@ where
     ///
     /// # Returns
     /// A new AFast instance
-    pub fn new(state: Arc<T>, handlers: Vec<HandlerGeneric<T>>) -> Self {
+    pub fn new(state: Arc<T>, handlers: Vec<HandlerGeneric<T, H>>) -> Self {
         Self {
             state,
             handlers: Arc::new(handlers),
@@ -243,6 +272,11 @@ where
     pub fn set_doc(mut self, enable: bool) -> Self {
         self.doc = enable;
         self
+    }
+
+    fn get_js_header(&self) -> String {
+        let code_client_type = H::to_js_type("_header").to_string();
+        code_client_type
     }
 
     /// Start the server
@@ -289,13 +323,30 @@ where
                             .await
                             .unwrap();
 
+                        let (header, size) = match H::from_bytes(&body) {
+                            Ok(h) => h,
+                            Err(_) => {
+                                continue;
+                            }
+                        };
+
                         // Parse sequence number and handler ID
-                        let seq: usize = u32::from_be_bytes([body[0], body[1], body[2], body[3]]) as usize;
-                        let id: usize = u32::from_be_bytes([body[4], body[5], body[6], body[7]]) as usize;
+                        let seq: usize = u32::from_be_bytes([
+                            body[size + 0],
+                            body[size + 1],
+                            body[size + 2],
+                            body[size + 3],
+                        ]) as usize;
+                        let id: usize = u32::from_be_bytes([
+                            body[size + 4],
+                            body[size + 5],
+                            body[size + 6],
+                            body[size + 7],
+                        ]) as usize;
 
                         // Call handler
                         let handler = &handlers[id];
-                        let fut = (handler.func)(Arc::clone(&state), &body[8..]);
+                        let fut = (handler.func)(Arc::clone(&state), header, &body[size + 8..]);
                         let res = fut.await.unwrap();
 
                         // Build response: len + seq + id + response
@@ -329,11 +380,30 @@ where
                         .await
                         .unwrap();
 
-                    let seq: usize = u32::from_be_bytes([body[0], body[1], body[2], body[3]]);
-                    let id: usize = u32::from_be_bytes([body[4], body[5], body[6], body[7]]);
+                    let (header, size) = match H::from_bytes(&body) {
+                        Ok(h) => h,
+                        Err(_) => {
+                            continue;
+                        }
+                    };
 
+                    // Parse sequence number and handler ID
+                    let seq: usize = u32::from_be_bytes([
+                        body[size + 0],
+                        body[size + 1],
+                        body[size + 2],
+                        body[size + 3],
+                    ]) as usize;
+                    let id: usize = u32::from_be_bytes([
+                        body[size + 4],
+                        body[size + 5],
+                        body[size + 6],
+                        body[size + 7],
+                    ]) as usize;
+
+                    // Call handler
                     let handler = &handlers[id];
-                    let fut = (handler.func)(Arc::clone(&state), &body[8..]);
+                    let fut = (handler.func)(Arc::clone(&state), header, &body[size + 8..]);
                     let res = fut.await.unwrap();
 
                     let mut final_res = Vec::with_capacity(12 + res.len());
@@ -366,15 +436,20 @@ where
                 .collect::<Vec<String>>()
                 .join("\n");
 
+            let header = self.get_js_header();
+
             let js_content = format!(
-                "{}\n\nclass AFastClient {{\nconstructor(options){{this._options=options;if(!options.call){{throw new Error('call is required');}};this._call=options.call}}\n{}\n}}",
+                "{}\n\nclass AFastClient {{\n/**\n * Create client\n * @param {{{{header:()=>Promise<{}>,call:(buf:Uint8Array)=>Promise<Uint8Array>,}}}} options\n */\nconstructor(options){{this._options=options;if(!options.header){{throw new Error('header is required');}};this._header=options.header;if(!options.call){{throw new Error('call is required');}};this._call=options.call}}\n{}\n}}",
                 js::JS,
+                header,
                 js_content
             );
 
             let ts_content = format!(
-                "{}\n\nclass AFastClient {{\n_options:ClientOptions;_call:ClientCall;\n\nconstructor(options:ClientOptions){{this._options=options;if(!options.call){{throw new Error('call is required');}};this._call=options.call}}\n{}\n}}",
+                "{}type ClientHeader=()=>Promise<{}>;\ntype ClientOptions={{header:ClientHeader;call:ClientCall;[key: string]:any;}}\n\nclass AFastClient {{\n_options:ClientOptions;_header:ClientHeader;_call:ClientCall;\n/**\n * Create client\n * @param {{{{header:()=>Promise<{}>,call:(buf:Uint8Array)=>Promise<Uint8Array>,}}}} options\n */\nconstructor(options:ClientOptions){{this._options=options;if(!options.header){{throw new Error('header is required');}};this._header=options.header;if(!options.call){{throw new Error('call is required');}};this._call=options.call}}\n{}\n}}",
                 js::TS,
+                header,
+                header,
                 ts_content
             );
 
@@ -391,10 +466,22 @@ where
                     axum::routing::post(
                         move |axum::Extension((state, handlers)): axum::Extension<(
                             Arc<T>,
-                            Arc<Vec<HandlerGeneric<T>>>,
+                            Arc<Vec<HandlerGeneric<T, H>>>,
                         )>,
                               body: axum::body::Bytes| async move {
-                            if body.len() < 4 {
+                            let (header, size) = match H::from_bytes(&body[..]) {
+                                Ok(h) => h,
+                                Err(e) => {
+                                    return axum::response::Response::builder()
+                                        .status(400)
+                                        .body(http_body_util::Full::new(axum::body::Bytes::from(
+                                            e.to_string(),
+                                        )))
+                                        .unwrap();
+                                }
+                            };
+
+                            if body.len() < size + 4 {
                                 return axum::response::Response::builder()
                                     .status(400)
                                     .body(http_body_util::Full::new(axum::body::Bytes::from(
@@ -402,9 +489,30 @@ where
                                     )))
                                     .unwrap();
                             }
-                            let id = u32::from_be_bytes([body[0], body[1], body[2], body[3]]);
+
+                            let id = u32::from_be_bytes([
+                                body[size + 0],
+                                body[size + 1],
+                                body[size + 2],
+                                body[size + 3],
+                            ]);
                             let handler = &handlers[id as usize];
-                            let fut = (handler.func)(Arc::clone(&state), &body[4..]);
+
+                            for mw in &handler.middlewares {
+                                let fut = mw(Arc::clone(&state), header.clone());
+                                match fut.await {
+                                    Ok(_) => {}
+                                    Err(e) => {
+                                        return axum::response::Response::builder()
+                                            .status(400)
+                                            .body(http_body_util::Full::new(
+                                                axum::body::Bytes::from(e.to_string()),
+                                            ))
+                                            .unwrap();
+                                    }
+                                }
+                            }
+                            let fut = (handler.func)(Arc::clone(&state), header, &body[size + 4..]);
                             match fut.await {
                                 Ok(res) => {
                                     let mut final_res = Vec::with_capacity(4 + res.len());
@@ -465,7 +573,7 @@ where
                 axum::routing::any(
                     move |axum::Extension((state, handlers)): axum::Extension<(
                         Arc<T>,
-                        Arc<Vec<HandlerGeneric<T>>>,
+                        Arc<Vec<HandlerGeneric<T, H>>>,
                     )>,
                           ws: axum::extract::ws::WebSocketUpgrade| async move {
                         ws.on_upgrade(|mut ws| async move {
@@ -475,14 +583,34 @@ where
                                     if body.len() < 8 {
                                         continue;
                                     }
-                                    let seq: usize =
-                                        u32::from_be_bytes([body[0], body[1], body[2], body[3]])
-                                            as usize;
-                                    let id: usize =
-                                        u32::from_be_bytes([body[4], body[5], body[6], body[7]])
-                                            as usize;
+
+                                    let (header, size) = match H::from_bytes(&body) {
+                                        Ok(h) => h,
+                                        Err(_) => {
+                                            continue;
+                                        }
+                                    };
+
+                                    let seq: usize = u32::from_be_bytes([
+                                        body[size + 0],
+                                        body[size + 1],
+                                        body[size + 2],
+                                        body[size + 3],
+                                    ])
+                                        as usize;
+                                    let id: usize = u32::from_be_bytes([
+                                        body[size + 4],
+                                        body[size + 5],
+                                        body[size + 6],
+                                        body[size + 7],
+                                    ]) as usize;
+
                                     let handler = &handlers[id];
-                                    let fut = (handler.func)(Arc::clone(&state), &body[8..]);
+                                    let fut = (handler.func)(
+                                        Arc::clone(&state),
+                                        header,
+                                        &body[size + 8..],
+                                    );
                                     let res = fut.await.unwrap();
                                     let mut final_res = Vec::with_capacity(8 + res.len());
                                     final_res.extend_from_slice(&seq.to_be_bytes());
