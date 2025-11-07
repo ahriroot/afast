@@ -41,7 +41,7 @@ pub struct Response {
     gender: Option<bool>,
 }
 
-#[handler(desc("Get user information"))]
+#[handler(desc("Get user information"), ns("api.user"))]
 async fn get_user(
     _state: Arc<Mutex<String>>,
     header: Header,
@@ -74,7 +74,7 @@ struct Resp2 {
     name: String,
 }
 
-#[handler(desc("Get user by id"), mws("auth"))]
+#[handler(desc("Get user by id"), mws("auth"), ns("api"))]
 async fn get_id(_state: Arc<Mutex<String>>, header: Header, req: Req2) -> Result<Resp2, Error> {
     Ok(Resp2 {
         id: req.id,

@@ -14,18 +14,22 @@ _options:ClientOptions;_header:ClientHeader;_call:ClientCall;
  * @param {{header:()=>Promise<{id:number;}>,call:(buf:Uint8Array)=>Promise<Uint8Array>,}} options
  */
 constructor(options:ClientOptions){this._options=options;if(!options.header){throw new Error('header is required');};this._header=options.header;if(!options.call){throw new Error('call is required');};this._call=options.call}
-/**
- * Get user information
- * @param {{sex:{_type:0;id:number;}|{_type:1;name:string;};id:number;name:string;age:number;hobbies:Array<{id:number;name:string;}>;tags:Array<string>;gender:boolean|null;}} request
- * @returns {{sex:{_type:0;id:number;}|{_type:1;name:string;};id:number;name:string;age:number;hobbies:Array<{id:number;name:string;}>;tags:Array<string>;gender:boolean|null;}}
- */
-get_user = async (request:{sex:{_type:0;id:number;}|{_type:1;name:string;};id:number;name:string;age:number;hobbies:Array<{id:number;name:string;}>;tags:Array<string>;gender:boolean|null;}): Promise<{sex:{_type:0;id:number;}|{_type:1;name:string;};id:number;name:string;age:number;hobbies:Array<{id:number;name:string;}>;tags:Array<string>;gender:boolean|null;}> => {if (request.age === 0) throw new AFastValidateError('name is required');if (request.age < 1) throw new AFastValidateError('name must be at least 1 character long');if (request.age > 100) throw new AFastValidateError('name must be at most 10 characters long');const _b1 = new AFastByteBuffer();const _header = await this._header();_b1.pU32(_header.id);_b1.pU32(0);_b1.pU32(request.sex._type);switch (request.sex._type) {case 0:_b1.pI64(request.sex.id);break;case 1:_b1.pS(request.sex.name);break;default:throw new Error('unknown variant');}_b1.pI64(request.id);_b1.pS(request.name);_b1.pU32(request.age);_b1.pU32(request.hobbies.length);for(let __item_0 of request.hobbies){_b1.pI64(__item_0.id);_b1.pS(__item_0.name);}_b1.pU32(request.tags.length);for(let __item_0 of request.tags){_b1.pS(__item_0);}if(request.gender === null)_b1.pU8(0);else{_b1.pU8(1);_b1.pB(request.gender);}const _b2 = new AFastByteReader(await this._call(_b1.tU8A()));_b2.rI32();const response = {sex:{...(function(){switch (_b2.rU32()) {case 0: return {id:_b2.rI64(),};case 1: return {name:_b2.rS(),};default:throw new Error('unknown variant');}}())},id:_b2.rI64(),name:_b2.rS(),age:_b2.rU32(),hobbies:Array.from({length:_b2.rU32()},()=>({id:_b2.rI64(),name:_b2.rS(),})),tags:Array.from({length:_b2.rU32()},()=>(_b2.rS())),gender:_b2.rU8() === 0 ? null : _b2.rB(),};return response as any;};
+api = {
 /**
  * Get user by id
  * @param {{id:number;}} request
  * @returns {{id:number;name:string;}}
  */
-get_id = async (request:{id:number;}): Promise<{id:number;name:string;}> => {const _b1 = new AFastByteBuffer();const _header = await this._header();_b1.pU32(_header.id);_b1.pU32(1);_b1.pI64(request.id);const _b2 = new AFastByteReader(await this._call(_b1.tU8A()));_b2.rI32();const response = {id:_b2.rI64(),name:_b2.rS(),};return response as any;};
+get_id: async (request:{id:number;}): Promise<{id:number;name:string;}> => {const _b1 = new AFastByteBuffer();const _header = await this._header();_b1.pU32(_header.id);_b1.pU32(1);_b1.pI64(request.id);const _b2 = new AFastByteReader(await this._call(_b1.tU8A()));_b2.rI32();const response = {id:_b2.rI64(),name:_b2.rS(),};return response as any;},
+user: {
+/**
+ * Get user information
+ * @param {{id:number;name:string;age:number;hobbies:Array<{id:number;name:string;}>;tags:Array<string>;gender:boolean|null;sex:{_type:0;id:number;}|{_type:1;name:string;};}} request
+ * @returns {{sex:{_type:0;id:number;}|{_type:1;name:string;};id:number;name:string;age:number;hobbies:Array<{id:number;name:string;}>;tags:Array<string>;gender:boolean|null;}}
+ */
+get_user: async (request:{id:number;name:string;age:number;hobbies:Array<{id:number;name:string;}>;tags:Array<string>;gender:boolean|null;sex:{_type:0;id:number;}|{_type:1;name:string;};}): Promise<{sex:{_type:0;id:number;}|{_type:1;name:string;};id:number;name:string;age:number;hobbies:Array<{id:number;name:string;}>;tags:Array<string>;gender:boolean|null;}> => {if (request.age === 0) throw new AFastValidateError('name is required');if (request.age < 1) throw new AFastValidateError('name must be at least 1 character long');if (request.age > 100) throw new AFastValidateError('name must be at most 10 characters long');const _b1 = new AFastByteBuffer();const _header = await this._header();_b1.pU32(_header.id);_b1.pU32(0);_b1.pI64(request.id);_b1.pS(request.name);_b1.pU32(request.age);_b1.pU32(request.hobbies.length);for(let __item_0 of request.hobbies){_b1.pI64(__item_0.id);_b1.pS(__item_0.name);}_b1.pU32(request.tags.length);for(let __item_0 of request.tags){_b1.pS(__item_0);}if(request.gender === null)_b1.pU8(0);else{_b1.pU8(1);_b1.pB(request.gender);}_b1.pU32(request.sex._type);switch (request.sex._type) {case 0:_b1.pI64(request.sex.id);break;case 1:_b1.pS(request.sex.name);break;default:throw new Error('unknown variant');}const _b2 = new AFastByteReader(await this._call(_b1.tU8A()));_b2.rI32();const response = {sex:{...(function(){switch (_b2.rU32()) {case 0: return {id:_b2.rI64(),};case 1: return {name:_b2.rS(),};default:throw new Error('unknown variant');}}())},id:_b2.rI64(),name:_b2.rS(),age:_b2.rU32(),hobbies:Array.from({length:_b2.rU32()},()=>({id:_b2.rI64(),name:_b2.rS(),})),tags:Array.from({length:_b2.rU32()},()=>(_b2.rS())),gender:_b2.rU8() === 0 ? null : _b2.rB(),};return response as any;}
+}
+}
 }
 
 const client = new AFastClient({
@@ -53,9 +57,9 @@ const client = new AFastClient({
 });
 
 const main = async () => {
-    let res1 = await client.get_user({ id: 1, name: 'Alice', age: 20, hobbies: [{ id: 2, name: "reaading" }], tags: ["tag1", "tag2"], gender: true, sex: { _type: 1, name: "1" } })
+    let res1 = await client.api.user.get_user({ id: 1, name: 'Alice', age: 20, hobbies: [{ id: 2, name: "reaading" }], tags: ["tag1", "tag2"], gender: true, sex: { _type: 1, name: "1" } })
     console.log(res1);
-    let res2 = await client.get_id({ id: 1 });
+    let res2 = await client.api.get_id({ id: 1 });
     console.log(res2);
 };
 

@@ -5,7 +5,7 @@ to simplify building networked applications. It supports multiple protocols
 via feature flags and provides automatic code generation for clients
 (TypeScript and JavaScript), API documentation, and field validation.
 
-## Instrutions
+## Instructions
 
 ### Supported Protocol Features
 
@@ -30,16 +30,43 @@ This allows you to run TCP and HTTP/WS servers simultaneously in the same applic
 
 ### Key Features
 
-- Automatic generation of TypeScript/JavaScript clients for your API
-- Automatic generation of documentation
-- Automatic field validation, including custom rules
+- **`handler` Macro**: Declare HTTP endpoints with minimal boilerplate
+  - Automatic TypeScript/JavaScript client generation
+  - Namespace support for organized API structure (`ns("api.v1.user")`)
+  - Middleware chaining for authentication/validation (`mws("auth")`)
+  - Descriptive API documentation generation (`desc("Get user info")`)
+- Automatic field validation with custom rules
 - Async handler functions with state management
 - Flexible multi-protocol support: HTTP, WS, TCP
+
+#### Handler Macro Overview
+
+The `#[handler]` attribute macro transforms async functions into full-featured API endpoints:
+
+```rust
+#[handler(desc("Get user information"), ns("api.v1.user"), mws("auth"))]
+async fn get_user(state: Arc<Mutex<String>>, header: Header, req: Request) -> Result<Response, Error> {
+    // Your business logic
+}
+```
+
+**Macro Parameters:**
+
+- `desc("description")` - API description for documentation
+- `ns("api.v1.user")` - Namespace for nested JS client generation
+- `mws("auth,validation")` - Middleware chain for pre-processing
+
+**Generated Output:**
+
+- Type-safe HTTP endpoints
+- Nested JavaScript client structure
+- TypeScript type definitions  
+- OpenAPI documentation
 
 ### Upcoming Features / Development Plan
 
 - Nested structure validation for complex types
-- Enable or disable js / ts / document by feautre flags
+- Enable or disable js / ts / document by feature flags
 - Add command for generating client code
 - Generate client code for additional languages: Java, Kotlin, C#, Rust, etc.
 - Improved code generation templates for easier integration
@@ -91,7 +118,7 @@ pub struct Response {
     gender: Option<bool>,
 }
 
-#[handler(desc("Get user information"))]
+#[handler(desc("Get user information"), ns("api.user"))]
 async fn get_user(
     _state: Arc<Mutex<String>>,
     header: Header,
@@ -124,7 +151,7 @@ struct Resp2 {
     name: String,
 }
 
-#[handler(desc("Get user by id"), mws("auth"))]
+#[handler(desc("Get user by id"), mws("auth"), ns("api"))]
 async fn get_id(_state: Arc<Mutex<String>>, header: Header, req: Req2) -> Result<Resp2, Error> {
     Ok(Resp2 {
         id: req.id,

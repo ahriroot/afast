@@ -18,6 +18,7 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
     let args = parse_macro_input!(attr with Punctuated<Meta, token::Comma>::parse_terminated);
     let mut desc = String::new();
     let mut ms: Vec<String> = Vec::new();
+    let mut namespace = Vec::new();
     for arg in args {
         match arg {
             Meta::Path(_) => {}
@@ -36,6 +37,18 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
                             ms = lit
                                 .value()
                                 .split(",")
+                                .map(|s| s.trim().to_string())
+                                .collect();
+                        }
+                        Err(_) => {}
+                    }
+                }
+                if meta.path.is_ident("ns") {
+                    match meta.parse_args::<LitStr>() {
+                        Ok(lit) => {
+                            namespace = lit
+                                .value()
+                                .split(".")
                                 .map(|s| s.trim().to_string())
                                 .collect();
                         }
@@ -148,6 +161,7 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
                     Box<dyn std::future::Future<Output = Result<(), afast::Error>> + Send>
                 > + Send + Sync + 'static,
             >>,
+            Vec<String>,
             Box<
                 dyn Fn(
                     #state_ty,
@@ -162,7 +176,7 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
             let code_request_type = #req_ty::to_js_type("request").to_string();
             let code_resposne_type = #resp_ty::to_js_type("response").to_string();
             js.push(format!("/**\n{} * @param {{{}}} request\n * @returns {{{}}}\n */\n", #desc, code_request_type, code_resposne_type));
-            js.push(format!("{} = async (request) => {{", #func_name));
+            js.push(format!("{}: async (request) => {{", #func_name));
             let code = #req_ty::to_js_validate("request").to_string();
             js.push(code);
             js.push("const _b1 = new AFastByteBuffer();".to_string());
@@ -177,13 +191,13 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
             let code = format!("const response = {};", #resp_ty::from_js("response").to_string());
             js.push(code);
             js.push("return response;".to_string());
-            js.push("};".to_string());
+            js.push("}".to_string());
 
             let mut ts = Vec::new();
             let code_request_type = #req_ty::to_js_type("request").to_string();
             let code_resposne_type = #resp_ty::to_js_type("response").to_string();
             ts.push(format!("/**\n{} * @param {{{}}} request\n * @returns {{{}}}\n */\n", #desc, code_request_type, code_resposne_type));
-            ts.push(format!("{} = async (request:{}): Promise<{}> => {{", #func_name, code_request_type, code_resposne_type));
+            ts.push(format!("{}: async (request:{}): Promise<{}> => {{", #func_name, code_request_type, code_resposne_type));
             let code = #req_ty::to_js_validate("request").to_string();
             ts.push(code);
             ts.push("const _b1 = new AFastByteBuffer();".to_string());
@@ -198,12 +212,13 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
             let code = format!("const response = {};", #resp_ty::from_js("response").to_string());
             ts.push(code);
             ts.push("return response as any;".to_string());
-            ts.push("};".to_string());
+            ts.push("}".to_string());
 
             (
                 js.join(""),
                 ts.join(""),
                 vec![#(#mws)*],
+                vec![#(#namespace.to_string()),*],
                 Box::new(|state: #state_ty, header: #header_ty, req: &[u8]| {
                     let req = #req_ty::from_bytes(req);
                     Box::pin(async move {
@@ -241,13 +256,14 @@ pub fn register(input: TokenStream) -> TokenStream {
 
         registrations.push(quote! {
             {
-                let (js, ts, middlewares, func) = #func(#id);
+                let (js, ts, middlewares, namespace, func) = #func(#id);
                 afast::HandlerGeneric {
                     id: #id,
                     name: #name,
                     js,
                     ts,
                     middlewares,
+                    namespace,
                     func,
                 }
             }

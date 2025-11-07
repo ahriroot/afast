@@ -1,16 +1,16 @@
 //! # AFast
-//!
+//! 
 //! **AFast** is a high-performance asynchronous Rust backend framework designed
 //! to simplify building networked applications. It supports multiple protocols
 //! via feature flags and provides automatic code generation for clients
 //! (TypeScript and JavaScript), API documentation, and field validation.
-//!
-//! ## Instrutions
-//!
+//! 
+//! ## Instructions
+//! 
 //! ### Supported Protocol Features
-//!
+//! 
 //! You can enable the following features in your `Cargo.toml`:
-//!
+//! 
 //! - `http` - enable HTTP support
 //!   - `/api` - HTTP API endpoint
 //!   - `/js` - JavaScript client
@@ -18,35 +18,62 @@
 //! - `ws` - enable WebSocket support
 //!   - `/ws` - WebSocket endpoint
 //! - `tcp` - enable TCP support
-//!
+//! 
 //! **Note on TCP usage:**  
-//!
+//! 
 //! If the `tcp` feature is enabled, the `AFast::serve` method takes two arguments:
-//!
+//! 
 //! 1. The TCP address to listen on (`"127.0.0.1:8080"`).  
 //! 2. The HTTP/WS address (`"127.0.0.1:8081"`) for web clients and generated JS/TS clients.
-//!
+//! 
 //! This allows you to run TCP and HTTP/WS servers simultaneously in the same application.
-//!
+//! 
 //! ### Key Features
-//!
-//! - Automatic generation of TypeScript/JavaScript clients for your API
-//! - Automatic generation of documentation
-//! - Automatic field validation, including custom rules
+//! 
+//! - **`handler` Macro**: Declare HTTP endpoints with minimal boilerplate
+//!   - Automatic TypeScript/JavaScript client generation
+//!   - Namespace support for organized API structure (`ns("api.v1.user")`)
+//!   - Middleware chaining for authentication/validation (`mws("auth")`)
+//!   - Descriptive API documentation generation (`desc("Get user info")`)
+//! - Automatic field validation with custom rules
 //! - Async handler functions with state management
 //! - Flexible multi-protocol support: HTTP, WS, TCP
-//!
+//! 
+//! #### Handler Macro Overview
+//! 
+//! The `#[handler]` attribute macro transforms async functions into full-featured API endpoints:
+//! 
+//! ```rust
+//! #[handler(desc("Get user information"), ns("api.v1.user"), mws("auth"))]
+//! async fn get_user(state: Arc<Mutex<String>>, header: Header, req: Request) -> Result<Response, Error> {
+//!     // Your business logic
+//! }
+//! ```
+//! 
+//! **Macro Parameters:**
+//! 
+//! - `desc("description")` - API description for documentation
+//! - `ns("api.v1.user")` - Namespace for nested JS client generation
+//! - `mws("auth,validation")` - Middleware chain for pre-processing
+//! 
+//! **Generated Output:**
+//! 
+//! - Type-safe HTTP endpoints
+//! - Nested JavaScript client structure
+//! - TypeScript type definitions  
+//! - OpenAPI documentation
+//! 
 //! ### Upcoming Features / Development Plan
-//!
+//! 
 //! - Nested structure validation for complex types
-//! - Enable or disable js / ts / document by feautre flags
+//! - Enable or disable js / ts / document by feature flags
 //! - Add command for generating client code
 //! - Generate client code for additional languages: Java, Kotlin, C#, Rust, etc.
 //! - Improved code generation templates for easier integration
 //! - Enhanced error handling and validation reporting
-//!
+//! 
 //! ## Example
-//!
+//! 
 //! ```rust
 //! use std::sync::{Arc, Mutex};
 //! 
@@ -91,7 +118,7 @@
 //!     gender: Option<bool>,
 //! }
 //! 
-//! #[handler(desc("Get user information"))]
+//! #[handler(desc("Get user information"), ns("api.user"))]
 //! async fn get_user(
 //!     _state: Arc<Mutex<String>>,
 //!     header: Header,
@@ -124,7 +151,7 @@
 //!     name: String,
 //! }
 //! 
-//! #[handler(desc("Get user by id"), mws("auth"))]
+//! #[handler(desc("Get user by id"), mws("auth"), ns("api"))]
 //! async fn get_id(_state: Arc<Mutex<String>>, header: Header, req: Req2) -> Result<Resp2, Error> {
 //!     Ok(Resp2 {
 //!         id: req.id,
@@ -151,7 +178,7 @@
 //!         .unwrap();
 //! }
 //! ```
-//!
+//! 
 
 use std::sync::Arc;
 
@@ -159,7 +186,10 @@ pub use afast_macros::*;
 use tokio::net::ToSocketAddrs;
 
 mod error;
+#[cfg(feature = "http")]
 mod js;
+#[cfg(feature = "http")]
+mod utils;
 pub use error::Error;
 
 pub trait AFastData: Sized {
@@ -212,6 +242,8 @@ where
     pub ts: String,
     /// Middleware functions
     pub middlewares: Vec<Box<Middleware<T, H>>>,
+    /// Namespace for this handler
+    pub namespace: Vec<String>,
     /// Actual processing function
     pub func: Box<Handler<T, H>>,
 }
@@ -423,26 +455,13 @@ where
         {
             let state = Arc::clone(&self.state);
             let handlers = Arc::clone(&self.handlers);
-
-            let js_content = handlers
-                .iter()
-                .map(|h| h.js.clone())
-                .collect::<Vec<String>>()
-                .join("\n");
-
-            let ts_content = handlers
-                .iter()
-                .map(|h| h.ts.clone())
-                .collect::<Vec<String>>()
-                .join("\n");
-
             let header = self.get_js_header();
 
             let js_content = format!(
                 "{}\n\nclass AFastClient {{\n/**\n * Create client\n * @param {{{{header:()=>Promise<{}>,call:(buf:Uint8Array)=>Promise<Uint8Array>,}}}} options\n */\nconstructor(options){{this._options=options;if(!options.header){{throw new Error('header is required');}};this._header=options.header;if(!options.call){{throw new Error('call is required');}};this._call=options.call}}\n{}\n}}",
                 js::JS,
                 header,
-                js_content
+                utils::simple_js_builder(&handlers, true)
             );
 
             let ts_content = format!(
@@ -450,7 +469,7 @@ where
                 js::TS,
                 header,
                 header,
-                ts_content
+                utils::simple_js_builder(&handlers, false)
             );
 
             // TCP listener for HTTP/WS
@@ -635,8 +654,7 @@ where
             );
 
             axum::serve(listener, app).await.unwrap();
-
-            Ok(())
         }
+        Ok(())
     }
 }

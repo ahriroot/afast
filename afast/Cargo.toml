@@ -1,6 +1,6 @@
 [package]
 name = "afast"
-version = "0.0.2"
+version = "0.0.4"
 edition = "2024"
 authors = ["ahriknow <ahriknow@ahriknow.com>"]
 description = "AFast: high-performance async Rust web framework with HTTP, WS, TCP support, automatic client generation, validation, and documentation."
@@ -14,7 +14,7 @@ categories = ["asynchronous", "network-programming", "web-programming"]
 rust-version = "1.90"
 
 [dependencies]
-# afast-macros =  "0.0.2"
+# afast-macros =  "0.0.4"
 afast-macros = { path = "../afast-macros" }
 tokio = { version = "1.48", features = ["full"] }
 axum = { version = "0.8", optional = true }
@@ -22,7 +22,7 @@ http-body-util = { version = "0.1", features = ["full"], optional = true }
 tower-http = { version = "0.6", features = ["cors"], optional = true }
 
 [features]
-default = ["tcp", "http", "ws"]
+default = ["http"]
 http = ["axum", "http-body-util", "tower-http"]
 ws = ["axum", "axum/ws", "tower-http"]
 tcp = []
