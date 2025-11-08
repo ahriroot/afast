@@ -1,6 +1,6 @@
 [package]
 name = "example"
-version = "0.0.4"
+version = "0.0.5"
 edition = "2024"
 
 [dependencies]
@@ -8,7 +8,7 @@ afast = { path = "../afast" }
 tokio = { version = "1", features = ["full"] }
 
 [features]
-default = ["ws", "http", "tcp", "js"]
+default = ["http", "js"]
 js = ["afast/js"]
 tcp = ["afast/tcp"]
 http = ["afast/http"]

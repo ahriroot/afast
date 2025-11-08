@@ -1,6 +1,6 @@
 [package]
 name = "afast-macros"
-version = "0.0.4"
+version = "0.0.5"
 edition = "2024"
 authors = ["ahriknow <ahriknow@ahriknow.com>"]
 description = "AFast: high-performance async Rust web framework with HTTP, WS, TCP support, automatic client generation, validation, and documentation."

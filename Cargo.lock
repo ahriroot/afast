@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "afast"
-version = "0.0.4"
+version = "0.0.5"
 dependencies = [
  "afast-macros",
  "axum",
@@ -15,7 +15,7 @@ dependencies = [
 
 [[package]]
 name = "afast-macros"
-version = "0.0.4"
+version = "0.0.5"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -153,7 +153,7 @@ dependencies = [
 
 [[package]]
 name = "example"
-version = "0.0.4"
+version = "0.0.5"
 dependencies = [
  "afast",
  "tokio",
