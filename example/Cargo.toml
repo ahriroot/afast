@@ -4,5 +4,10 @@ version = "0.0.4"
 edition = "2024"
 
 [dependencies]
-afast = { path = "../afast", features = ["http", "ws", "tcp"] }
+afast = { path = "../afast", features = ["http"] }
 tokio = { version = "1", features = ["full"] }
+
+[features]
+default = ["js", "tcp"]
+js = ["afast/js"]
+tcp = ["afast/tcp"]

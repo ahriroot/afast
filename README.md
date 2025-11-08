@@ -12,12 +12,13 @@ via feature flags and provides automatic code generation for clients
 You can enable the following features in your `Cargo.toml`:
 
 - `http` - enable HTTP support
-  - `/api` - HTTP API endpoint
-  - `/js` - JavaScript client
-  - `/ts` - TypeScript client
+  - `/api` - HTTP API endpoints
+  - `/js` - JavaScript client (requires `js` feature)
+  - `/ts` - TypeScript client (requires `js` feature)
 - `ws` - enable WebSocket support
   - `/ws` - WebSocket endpoint
 - `tcp` - enable TCP support
+- `js` - enable JavaScript & TypeScript client generation
 
 **Note on TCP usage:**  
 
@@ -168,12 +169,15 @@ struct Header {
 async fn main() {
     let state = Arc::new(Mutex::new("".to_string()));
 
-    let server = AFast::<Mutex<String>, Header>::new(state, register! { get_user, get_id })
-        .set_js(true) // Auto generate JS client
-        .set_doc(true); // Auto generate documentation
+    let server =
+        AFast::<Mutex<String>, Header>::new(state).service("user", register! { get_user, get_id });
 
     server
-        .serve(&"127.0.0.1:8080", &"127.0.0.1:8081")
+        .serve(
+            #[cfg(feature = "tcp")]
+            &"127.0.0.1:8080",
+            &"127.0.0.1:8081",
+        )
         .await
         .unwrap();
 }

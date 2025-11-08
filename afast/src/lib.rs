@@ -12,12 +12,13 @@
 //! You can enable the following features in your `Cargo.toml`:
 //! 
 //! - `http` - enable HTTP support
-//!   - `/api` - HTTP API endpoint
-//!   - `/js` - JavaScript client
-//!   - `/ts` - TypeScript client
+//!   - `/api` - HTTP API endpoints
+//!   - `/js` - JavaScript client (requires `js` feature)
+//!   - `/ts` - TypeScript client (requires `js` feature)
 //! - `ws` - enable WebSocket support
 //!   - `/ws` - WebSocket endpoint
 //! - `tcp` - enable TCP support
+//! - `js` - enable JavaScript & TypeScript client generation
 //! 
 //! **Note on TCP usage:**  
 //! 
@@ -168,12 +169,15 @@
 //! async fn main() {
 //!     let state = Arc::new(Mutex::new("".to_string()));
 //! 
-//!     let server = AFast::<Mutex<String>, Header>::new(state, register! { get_user, get_id })
-//!         .set_js(true) // Auto generate JS client
-//!         .set_doc(true); // Auto generate documentation
+//!     let server =
+//!         AFast::<Mutex<String>, Header>::new(state).service("user", register! { get_user, get_id });
 //! 
 //!     server
-//!         .serve(&"127.0.0.1:8080", &"127.0.0.1:8081")
+//!         .serve(
+//!             #[cfg(feature = "tcp")]
+//!             &"127.0.0.1:8080",
+//!             &"127.0.0.1:8081",
+//!         )
 //!         .await
 //!         .unwrap();
 //! }
@@ -186,19 +190,24 @@ pub use afast_macros::*;
 use tokio::net::ToSocketAddrs;
 
 mod error;
-#[cfg(feature = "http")]
+#[cfg(feature = "js")]
 mod js;
-#[cfg(feature = "http")]
+#[cfg(feature = "js")]
 mod utils;
 pub use error::Error;
 
 pub trait AFastData: Sized {
     fn to_bytes(&self) -> Vec<u8>;
     fn from_bytes(buf: &[u8]) -> Result<(Self, usize), Error>;
+    #[cfg(feature = "js")]
     fn to_js(prefix: &str) -> String;
+    #[cfg(feature = "js")]
     fn to_ts(prefix: &str) -> String;
+    #[cfg(feature = "js")]
     fn to_js_type(prefix: &str) -> String;
+    #[cfg(feature = "js")]
     fn to_js_validate(prefix: &str) -> String;
+    #[cfg(feature = "js")]
     fn from_js(prefix: &str) -> String;
     fn validate(&self) -> Result<(), Vec<&'static str>>;
 }
@@ -260,10 +269,9 @@ where
     state: Arc<T>,
     /// Registered handler list
     handlers: Arc<Vec<HandlerGeneric<T, H>>>,
-    /// Flag to output JS client
-    js: bool,
-    /// Flag to output documentation
-    doc: bool,
+    #[cfg(feature = "js")]
+    /// Client code
+    codes: std::collections::HashMap<String, String>,
 }
 
 impl<T, H> AFast<T, H>
@@ -279,36 +287,56 @@ where
     ///
     /// # Returns
     /// A new AFast instance
-    pub fn new(state: Arc<T>, handlers: Vec<HandlerGeneric<T, H>>) -> Self {
+    pub fn new(state: Arc<T>) -> Self {
         Self {
             state,
-            handlers: Arc::new(handlers),
-            js: false,
-            doc: false,
+            handlers: Arc::new(vec![]),
+            #[cfg(feature = "js")]
+            codes: std::collections::HashMap::new(),
         }
     }
 
-    /// Enable or disable JS client output
-    ///
-    /// # Arguments
-    /// * `enable` - `true` to enable JS client output, `false` to disable
-    pub fn set_js(mut self, enable: bool) -> Self {
-        self.js = enable;
-        self
-    }
+    /// Register a service with additional handlers
+    pub fn service(
+        mut self,
+        #[cfg(feature = "js")] name: &str,
+        #[cfg(not(feature = "js"))] _: &str,
+        handlers: Vec<HandlerGeneric<T, H>>,
+    ) -> Self {
+        #[cfg(feature = "js")]
+        {
+            if handlers.is_empty() {
+                println!("No handlers found for service {}", name);
+                return self;
+            }
+            let header_code = H::to_js_type("_header").to_string();
 
-    /// Enable or disable documentation output
-    ///
-    /// # Arguments
-    /// * `enable` - `true` to enable doc output, `false` to disable
-    pub fn set_doc(mut self, enable: bool) -> Self {
-        self.doc = enable;
-        self
-    }
+            let js_content = format!(
+                "{}\n\nclass AFastClient {{\noffset={};\n/**\n * Create client\n * @param {{{{header:()=>Promise<{}>,call:(buf:Uint8Array)=>Promise<Uint8Array>,}}}} options\n */\nconstructor(options){{this._options=options;if(!options.header){{throw new Error('header is required');}};this._header=options.header;if(!options.call){{throw new Error('call is required');}};this._call=options.call}}\n{}\n}}",
+                js::JS,
+                self.handlers.len(),
+                header_code,
+                utils::simple_js_builder(&handlers, true)
+            );
 
-    fn get_js_header(&self) -> String {
-        let code_client_type = H::to_js_type("_header").to_string();
-        code_client_type
+            let ts_content = format!(
+                "{}type ClientHeader=()=>Promise<{}>;\ntype ClientOptions={{header:ClientHeader;call:ClientCall;[key: string]:any;}}\n\nclass AFastClient {{\noffset:number={};_options:ClientOptions;_header:ClientHeader;_call:ClientCall;\n/**\n * Create client\n * @param {{{{header:()=>Promise<{}>,call:(buf:Uint8Array)=>Promise<Uint8Array>,}}}} options\n */\nconstructor(options:ClientOptions){{this._options=options;if(!options.header){{throw new Error('header is required');}};this._header=options.header;if(!options.call){{throw new Error('call is required');}};this._call=options.call}}\n{}\n}}",
+                js::TS,
+                header_code,
+                self.handlers.len(),
+                header_code,
+                utils::simple_js_builder(&handlers, false)
+            );
+
+            self.codes.insert(format!("{}/js", name), js_content);
+            self.codes.insert(format!("{}/ts", name), ts_content);
+        }
+
+        let existing_handlers = Arc::get_mut(&mut self.handlers).unwrap();
+        existing_handlers.extend(handlers);
+        self.handlers = Arc::clone(&self.handlers);
+
+        self
     }
 
     /// Start the server
@@ -455,22 +483,6 @@ where
         {
             let state = Arc::clone(&self.state);
             let handlers = Arc::clone(&self.handlers);
-            let header = self.get_js_header();
-
-            let js_content = format!(
-                "{}\n\nclass AFastClient {{\n/**\n * Create client\n * @param {{{{header:()=>Promise<{}>,call:(buf:Uint8Array)=>Promise<Uint8Array>,}}}} options\n */\nconstructor(options){{this._options=options;if(!options.header){{throw new Error('header is required');}};this._header=options.header;if(!options.call){{throw new Error('call is required');}};this._call=options.call}}\n{}\n}}",
-                js::JS,
-                header,
-                utils::simple_js_builder(&handlers, true)
-            );
-
-            let ts_content = format!(
-                "{}type ClientHeader=()=>Promise<{}>;\ntype ClientOptions={{header:ClientHeader;call:ClientCall;[key: string]:any;}}\n\nclass AFastClient {{\n_options:ClientOptions;_header:ClientHeader;_call:ClientCall;\n/**\n * Create client\n * @param {{{{header:()=>Promise<{}>,call:(buf:Uint8Array)=>Promise<Uint8Array>,}}}} options\n */\nconstructor(options:ClientOptions){{this._options=options;if(!options.header){{throw new Error('header is required');}};this._header=options.header;if(!options.call){{throw new Error('call is required');}};this._call=options.call}}\n{}\n}}",
-                js::TS,
-                header,
-                header,
-                utils::simple_js_builder(&handlers, false)
-            );
 
             // TCP listener for HTTP/WS
             let listener = tokio::net::TcpListener::bind(addr_http).await.unwrap();
@@ -479,17 +491,47 @@ where
 
             // HTTP route /api
             #[cfg(feature = "http")]
-            let app = app
-                .route(
-                    "/api",
-                    axum::routing::post(
-                        move |axum::Extension((state, handlers)): axum::Extension<(
-                            Arc<T>,
-                            Arc<Vec<HandlerGeneric<T, H>>>,
-                        )>,
-                              body: axum::body::Bytes| async move {
-                            let (header, size) = match H::from_bytes(&body[..]) {
-                                Ok(h) => h,
+            let app = app.route(
+                "/api",
+                axum::routing::post(
+                    move |axum::Extension((state, handlers)): axum::Extension<(
+                        Arc<T>,
+                        Arc<Vec<HandlerGeneric<T, H>>>,
+                    )>,
+                          body: axum::body::Bytes| async move {
+                        let (header, size) = match H::from_bytes(&body[..]) {
+                            Ok(h) => h,
+                            Err(e) => {
+                                return axum::response::Response::builder()
+                                    .status(400)
+                                    .body(http_body_util::Full::new(axum::body::Bytes::from(
+                                        e.to_string(),
+                                    )))
+                                    .unwrap();
+                            }
+                        };
+
+                        if body.len() < size + 4 {
+                            return axum::response::Response::builder()
+                                .status(400)
+                                .body(http_body_util::Full::new(axum::body::Bytes::from(
+                                    "Invalid request",
+                                )))
+                                .unwrap();
+                        }
+
+                        let id = u32::from_be_bytes([
+                            body[size + 0],
+                            body[size + 1],
+                            body[size + 2],
+                            body[size + 3],
+                        ]);
+                        let handler = &handlers[id as usize];
+
+                        for mw in &handler.middlewares {
+                            let fut = mw(Arc::clone(&state), header.clone());
+                            match fut.await {
+                                Ok(_) => {}
                                 Err(e) => {
                                     return axum::response::Response::builder()
                                         .status(400)
@@ -498,65 +540,43 @@ where
                                         )))
                                         .unwrap();
                                 }
-                            };
-
-                            if body.len() < size + 4 {
-                                return axum::response::Response::builder()
-                                    .status(400)
+                            }
+                        }
+                        let fut = (handler.func)(Arc::clone(&state), header, &body[size + 4..]);
+                        match fut.await {
+                            Ok(res) => {
+                                let mut final_res = Vec::with_capacity(4 + res.len());
+                                final_res.extend_from_slice(&id.to_be_bytes());
+                                final_res.extend_from_slice(&res);
+                                axum::response::Response::builder()
+                                    .status(200)
                                     .body(http_body_util::Full::new(axum::body::Bytes::from(
-                                        "Invalid request",
+                                        final_res,
                                     )))
-                                    .unwrap();
+                                    .unwrap()
                             }
+                            Err(e) => axum::response::Response::builder()
+                                .status(400)
+                                .body(http_body_util::Full::new(axum::body::Bytes::from(
+                                    e.to_string(),
+                                )))
+                                .unwrap(),
+                        }
+                    },
+                ),
+            );
 
-                            let id = u32::from_be_bytes([
-                                body[size + 0],
-                                body[size + 1],
-                                body[size + 2],
-                                body[size + 3],
-                            ]);
-                            let handler = &handlers[id as usize];
-
-                            for mw in &handler.middlewares {
-                                let fut = mw(Arc::clone(&state), header.clone());
-                                match fut.await {
-                                    Ok(_) => {}
-                                    Err(e) => {
-                                        return axum::response::Response::builder()
-                                            .status(400)
-                                            .body(http_body_util::Full::new(
-                                                axum::body::Bytes::from(e.to_string()),
-                                            ))
-                                            .unwrap();
-                                    }
-                                }
-                            }
-                            let fut = (handler.func)(Arc::clone(&state), header, &body[size + 4..]);
-                            match fut.await {
-                                Ok(res) => {
-                                    let mut final_res = Vec::with_capacity(4 + res.len());
-                                    final_res.extend_from_slice(&id.to_be_bytes());
-                                    final_res.extend_from_slice(&res);
-                                    axum::response::Response::builder()
-                                        .status(200)
-                                        .body(http_body_util::Full::new(axum::body::Bytes::from(
-                                            final_res,
-                                        )))
-                                        .unwrap()
-                                }
-                                Err(e) => axum::response::Response::builder()
-                                    .status(400)
-                                    .body(http_body_util::Full::new(axum::body::Bytes::from(
-                                        e.to_string(),
-                                    )))
-                                    .unwrap(),
-                            }
-                        },
-                    ),
-                )
-                .route(
-                    "/js",
-                    axum::routing::get(move || async move {
+            #[cfg(feature = "js")]
+            let app = app.route(
+                "/code/{service}/{lang}",
+                axum::routing::get(
+                    move |axum::Extension(codes): axum::Extension<
+                        std::collections::HashMap<String, String>,
+                    >,
+                          axum::extract::Path((service, lang)): axum::extract::Path<(
+                        String,
+                        String,
+                    )>| async move {
                         axum::response::Response::builder()
                             .status(200)
                             .header(
@@ -564,26 +584,15 @@ where
                                 "text/javascript; charset=utf-8",
                             )
                             .body(http_body_util::Full::new(axum::body::Bytes::from(
-                                js_content,
+                                codes
+                                    .get(&format!("{}/{}", service, lang))
+                                    .unwrap()
+                                    .to_string(),
                             )))
                             .unwrap()
-                    }),
-                )
-                .route(
-                    "/ts",
-                    axum::routing::get(move || async move {
-                        axum::response::Response::builder()
-                            .status(200)
-                            .header(
-                                axum::http::header::CONTENT_TYPE,
-                                "text/typescript; charset=utf-8",
-                            )
-                            .body(http_body_util::Full::new(axum::body::Bytes::from(
-                                ts_content,
-                            )))
-                            .unwrap()
-                    }),
-                );
+                    },
+                ),
+            );
 
             // WebSocket route /ws
             #[cfg(feature = "ws")]
@@ -646,7 +655,10 @@ where
             );
 
             // Attach shared state and CORS
-            let app = app.layer(axum::Extension((state, handlers))).layer(
+            let app = app.layer(axum::Extension((state, handlers)));
+            #[cfg(feature = "js")]
+            let app = app.layer(axum::Extension(self.codes.clone()));
+            let app = app.layer(
                 tower_http::cors::CorsLayer::new()
                     .allow_origin(tower_http::cors::AllowOrigin::any())
                     .allow_methods(tower_http::cors::AllowMethods::any())

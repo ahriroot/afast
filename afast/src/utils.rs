@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use crate::{AFastData, HandlerGeneric};
 
 /// Builds JavaScript object structure from handlers grouped by namespace
@@ -9,7 +7,7 @@ use crate::{AFastData, HandlerGeneric};
 ///
 /// # Returns
 /// * JavaScript code string with nested namespace structure
-pub fn simple_js_builder<T, H>(handlers: &Arc<Vec<HandlerGeneric<T, H>>>, js: bool) -> String
+pub fn simple_js_builder<T, H>(handlers: &Vec<HandlerGeneric<T, H>>, js: bool) -> String
 where
     T: Send + Sync + 'static,
     H: AFastData,
@@ -18,7 +16,7 @@ where
     let mut groups: std::collections::HashMap<String, Vec<String>> =
         std::collections::HashMap::new();
 
-    for handler in handlers.iter() {
+    for handler in handlers {
         let namespace_key = handler.namespace.join(".");
         groups
             .entry(namespace_key)
