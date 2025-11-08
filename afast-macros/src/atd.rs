@@ -1,19 +1,11 @@
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::{
-    FnArg, ItemFn, LitStr, Meta, PatType, ReturnType, Type, parse_macro_input,
+    FnArg, ItemFn, LitStr, Meta, Pat, PatType, ReturnType, Type, parse_macro_input,
     punctuated::Punctuated, token,
 };
 
 /// Attribute macro to convert an async function into a generic binary handler.
-///
-/// The user writes an async function with two arguments:
-/// 1. `state`: shared state
-/// 2. `req`: typed request
-///
-/// The macro generates:
-/// - a renamed async function `__inner_xxx` preserving the original logic
-/// - a wrapper function returning a `(String, String, Box<Middleware>, Vec<String>, Box<Handler>)` suitable for AFast registration
 pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as ItemFn);
 
@@ -22,12 +14,21 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
     let block = &input.block;
     let sig = &input.sig;
 
+    // 提取原始函数的参数名和类型
+    let mut params = Vec::new();
     let mut state_ty = None;
     let mut header_ty = None;
     let mut req_ty = None;
 
     for (i, arg) in sig.inputs.iter().enumerate() {
-        if let FnArg::Typed(PatType { ty, .. }) = arg {
+        if let FnArg::Typed(PatType { pat, ty, .. }) = arg {
+            let param_name = match &**pat {
+                Pat::Ident(ident) => &ident.ident,
+                _ => panic!("Expected identifier pattern"),
+            };
+
+            params.push((param_name, ty.clone()));
+
             match i {
                 0 => state_ty = Some(ty.clone()),
                 1 => header_ty = Some(ty.clone()),
@@ -41,6 +42,17 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
     let header_ty = header_ty.expect("expected header parameter");
     let req_ty = req_ty.expect("expected request parameter");
 
+    // 使用原始参数名重构 inner_ident 函数
+    let inner_ident = syn::Ident::new(&format!("__inner_{}", ident), ident.span());
+
+    // 构建参数列表，保持原始参数名
+    let inner_params: Vec<_> = params
+        .iter()
+        .map(|(name, ty)| {
+            quote! { #name: #ty }
+        })
+        .collect();
+
     let ret_type = match &sig.output {
         syn::ReturnType::Type(_, ty) => (**ty).clone(),
         syn::ReturnType::Default => syn::parse_quote!(()),
@@ -50,7 +62,6 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
     let resp_ty = match &sig.output {
         ReturnType::Type(_, ty) => {
             if let Type::Path(path) = &**ty {
-                // 简单处理 Result<Resp, _>
                 if let Some(seg) = path.path.segments.first() {
                     if seg.ident == "Result" {
                         if let syn::PathArguments::AngleBracketed(args) = &seg.arguments {
@@ -75,7 +86,6 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
         ReturnType::Default => panic!("Handler must return Result<Resp, Error>"),
     };
 
-    let inner_ident = syn::Ident::new(&format!("__inner_{}", ident), ident.span());
     let func_name = ident.to_string();
     let args = parse_macro_input!(attr with Punctuated<Meta, token::Comma>::parse_terminated);
     let mut desc = String::new();
@@ -87,46 +97,38 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
         })
     };
     let mut namespace: Vec<String> = Vec::new();
+
     for arg in args {
         match arg {
             Meta::Path(_) => {}
             Meta::List(meta) => {
                 if meta.path.is_ident("desc") {
-                    match meta.parse_args::<LitStr>() {
-                        Ok(lit) => {
-                            desc = format!(" * {}\n", lit.value());
-                        }
-                        Err(_) => {}
+                    if let Ok(lit) = meta.parse_args::<LitStr>() {
+                        desc = format!(" * {}\n", lit.value());
                     }
                 }
                 if meta.path.is_ident("mw") {
-                    match meta.parse_args::<LitStr>() {
-                        Ok(lit) => {
-                            let ident = format_ident!("{}", lit.value().trim());
-                            mw = quote! {
-                                Box::new(|state: #state_ty, header: #header_ty| {
-                                    Box::pin(async move {
-                                        match #ident(state, header).await {
-                                            Ok(_) => Ok(()),
-                                            Err(e) => Err(afast::Error::server_error(500, e.to_string())),
-                                        }
-                                    })
+                    if let Ok(lit) = meta.parse_args::<LitStr>() {
+                        let ident = format_ident!("{}", lit.value().trim());
+                        mw = quote! {
+                            Box::new(|state: #state_ty, header: #header_ty| {
+                                Box::pin(async move {
+                                    match #ident(state, header).await {
+                                        Ok(_) => Ok(()),
+                                        Err(e) => Err(afast::Error::server_error(500, e.to_string())),
+                                    }
                                 })
-                            };
-                        }
-                        Err(_) => {}
+                            })
+                        };
                     }
                 }
                 if meta.path.is_ident("ns") {
-                    match meta.parse_args::<LitStr>() {
-                        Ok(lit) => {
-                            namespace = lit
-                                .value()
-                                .split(".")
-                                .map(|s| s.trim().to_string())
-                                .collect();
-                        }
-                        Err(_) => {}
+                    if let Ok(lit) = meta.parse_args::<LitStr>() {
+                        namespace = lit
+                            .value()
+                            .split(".")
+                            .map(|s| s.trim().to_string())
+                            .collect();
                     }
                 }
             }
@@ -176,19 +178,17 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
         ts.push("return response as any;".to_string());
         ts.push("}".to_string());
     };
+
     #[cfg(not(feature = "js"))]
     let js = quote! {};
 
     let expanded = quote! {
-        /// The inner async function preserving the original user logic.
-        #vis async fn #inner_ident(state: #state_ty, header: #header_ty, req: #req_ty) -> #ret_type {
+        /// The inner async function preserving the original user logic and parameter names.
+        #vis async fn #inner_ident(#(#inner_params),*) -> #ret_type {
             #block
         }
 
         /// Returns a boxed handler suitable for AFast registration.
-        ///
-        /// Converts binary request to typed request using `from_bytes`,
-        /// calls the inner async function, and converts the response to binary with `to_bytes`.
         #vis fn #ident(id: u32) -> (
             String,
             String,
@@ -226,6 +226,7 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
                         match req {
                             Ok((req, _)) => {
                                 req.validate().map_err(|e| afast::Error::client_error(400, e.join(",")))?;
+                                // 调用 inner 函数时使用原始参数名
                                 match #inner_ident(state, header, req).await {
                                     Ok(resp) => Ok(resp.to_bytes()),
                                     Err(e) => Err(afast::Error::server_error(500, e.to_string())),
@@ -243,9 +244,6 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
 }
 
 /// Macro to register multiple handlers.
-///
-/// Accepts a list of handler function identifiers, generates a Vec of `HandlerGeneric`
-/// with auto-incremented IDs starting from 1, and preserves the JS mapping.
 pub fn register(input: TokenStream) -> TokenStream {
     let funcs: syn::punctuated::Punctuated<syn::Ident, syn::token::Comma> =
         parse_macro_input!(input with syn::punctuated::Punctuated::parse_terminated);
