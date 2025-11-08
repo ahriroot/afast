@@ -74,7 +74,7 @@ struct Resp2 {
     name: String,
 }
 
-#[handler(desc("Get user by id"), mws("auth"), ns("api"))]
+#[handler(desc("Get user by id"), mw("auth"), ns("api"))]
 async fn get_id(_state: Arc<Mutex<String>>, header: Header, req: Req2) -> Result<Resp2, Error> {
     Ok(Resp2 {
         id: req.id,
@@ -92,12 +92,13 @@ async fn main() {
     let state = Arc::new(Mutex::new("".to_string()));
 
     let server =
-        AFast::<Mutex<String>, Header>::new(state).service("user", register! { get_user, get_id }); // Auto generate documentation
+        AFast::<Mutex<String>, Header>::new(state).service("user", register! { get_user, get_id });
 
     server
         .serve(
             #[cfg(feature = "tcp")]
             &"127.0.0.1:8080",
+            #[cfg(any(feature = "http", feature = "ws"))]
             &"127.0.0.1:8081",
         )
         .await

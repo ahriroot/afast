@@ -1,16 +1,16 @@
 //! # AFast
-//! 
+//!
 //! **AFast** is a high-performance asynchronous Rust backend framework designed
 //! to simplify building networked applications. It supports multiple protocols
 //! via feature flags and provides automatic code generation for clients
 //! (TypeScript and JavaScript), API documentation, and field validation.
-//! 
+//!
 //! ## Instructions
-//! 
+//!
 //! ### Supported Protocol Features
-//! 
+//!
 //! You can enable the following features in your `Cargo.toml`:
-//! 
+//!
 //! - `http` - enable HTTP support
 //!   - `/api` - HTTP API endpoints
 //!   - `/js` - JavaScript client (requires `js` feature)
@@ -19,18 +19,18 @@
 //!   - `/ws` - WebSocket endpoint
 //! - `tcp` - enable TCP support
 //! - `js` - enable JavaScript & TypeScript client generation
-//! 
+//!
 //! **Note on TCP usage:**  
-//! 
+//!
 //! If the `tcp` feature is enabled, the `AFast::serve` method takes two arguments:
-//! 
+//!
 //! 1. The TCP address to listen on (`"127.0.0.1:8080"`).  
 //! 2. The HTTP/WS address (`"127.0.0.1:8081"`) for web clients and generated JS/TS clients.
-//! 
+//!
 //! This allows you to run TCP and HTTP/WS servers simultaneously in the same application.
-//! 
+//!
 //! ### Key Features
-//! 
+//!
 //! - **`handler` Macro**: Declare HTTP endpoints with minimal boilerplate
 //!   - Automatic TypeScript/JavaScript client generation
 //!   - Namespace support for organized API structure (`ns("api.v1.user")`)
@@ -39,53 +39,53 @@
 //! - Automatic field validation with custom rules
 //! - Async handler functions with state management
 //! - Flexible multi-protocol support: HTTP, WS, TCP
-//! 
+//!
 //! #### Handler Macro Overview
-//! 
+//!
 //! The `#[handler]` attribute macro transforms async functions into full-featured API endpoints:
-//! 
+//!
 //! ```rust
 //! #[handler(desc("Get user information"), ns("api.v1.user"), mws("auth"))]
 //! async fn get_user(state: Arc<Mutex<String>>, header: Header, req: Request) -> Result<Response, Error> {
 //!     // Your business logic
 //! }
 //! ```
-//! 
+//!
 //! **Macro Parameters:**
-//! 
+//!
 //! - `desc("description")` - API description for documentation
 //! - `ns("api.v1.user")` - Namespace for nested JS client generation
 //! - `mws("auth,validation")` - Middleware chain for pre-processing
-//! 
+//!
 //! **Generated Output:**
-//! 
+//!
 //! - Type-safe HTTP endpoints
 //! - Nested JavaScript client structure
 //! - TypeScript type definitions  
 //! - OpenAPI documentation
-//! 
+//!
 //! ### Upcoming Features / Development Plan
-//! 
+//!
 //! - Nested structure validation for complex types
 //! - Enable or disable js / ts / document by feature flags
 //! - Add command for generating client code
 //! - Generate client code for additional languages: Java, Kotlin, C#, Rust, etc.
 //! - Improved code generation templates for easier integration
 //! - Enhanced error handling and validation reporting
-//! 
+//!
 //! ## Example
-//! 
+//!
 //! ```rust
 //! use std::sync::{Arc, Mutex};
-//! 
+//!
 //! use afast::{AFast, AFastData, Error, handler, register};
-//! 
+//!
 //! #[derive(Debug, Clone, AFastData)]
 //! enum Sex {
 //!     Male { id: i64 },
 //!     Female { name: String },
 //! }
-//! 
+//!
 //! #[derive(Debug, Clone, AFastData)]
 //! struct Request {
 //!     id: i64,
@@ -101,13 +101,13 @@
 //!     gender: Option<bool>,
 //!     sex: Sex,
 //! }
-//! 
+//!
 //! #[derive(Debug, Clone, AFastData)]
 //! struct Hobby {
 //!     id: i64,
 //!     name: String,
 //! }
-//! 
+//!
 //! #[derive(Debug, AFastData)]
 //! pub struct Response {
 //!     sex: Sex,
@@ -118,7 +118,7 @@
 //!     tags: Vec<String>,
 //!     gender: Option<bool>,
 //! }
-//! 
+//!
 //! #[handler(desc("Get user information"), ns("api.user"))]
 //! async fn get_user(
 //!     _state: Arc<Mutex<String>>,
@@ -135,23 +135,23 @@
 //!         sex: req.sex.clone(),
 //!     })
 //! }
-//! 
+//!
 //! async fn auth(_state: Arc<Mutex<String>>, header: Header) -> Result<(), Error> {
 //!     println!("Token: {:?}", header);
 //!     Ok(())
 //! }
-//! 
+//!
 //! #[derive(Debug, AFastData)]
 //! struct Req2 {
 //!     id: i64,
 //! }
-//! 
+//!
 //! #[derive(Debug, AFastData)]
 //! struct Resp2 {
 //!     id: i64,
 //!     name: String,
 //! }
-//! 
+//!
 //! #[handler(desc("Get user by id"), mws("auth"), ns("api"))]
 //! async fn get_id(_state: Arc<Mutex<String>>, header: Header, req: Req2) -> Result<Resp2, Error> {
 //!     Ok(Resp2 {
@@ -159,19 +159,19 @@
 //!         name: "John".to_string(),
 //!     })
 //! }
-//! 
+//!
 //! #[derive(Debug, Clone, AFastData)]
 //! struct Header {
 //!     id: u32,
 //! }
-//! 
+//!
 //! #[tokio::main]
 //! async fn main() {
 //!     let state = Arc::new(Mutex::new("".to_string()));
-//! 
+//!
 //!     let server =
 //!         AFast::<Mutex<String>, Header>::new(state).service("user", register! { get_user, get_id });
-//! 
+//!
 //!     server
 //!         .serve(
 //!             #[cfg(feature = "tcp")]
@@ -182,7 +182,7 @@
 //!         .unwrap();
 //! }
 //! ```
-//! 
+//!
 
 use std::sync::Arc;
 
@@ -250,7 +250,7 @@ where
     /// TS client
     pub ts: String,
     /// Middleware functions
-    pub middlewares: Vec<Box<Middleware<T, H>>>,
+    pub middleware: Box<Middleware<T, H>>,
     /// Namespace for this handler
     pub namespace: Vec<String>,
     /// Actual processing function
@@ -272,6 +272,9 @@ where
     #[cfg(feature = "js")]
     /// Client code
     codes: std::collections::HashMap<String, String>,
+    #[cfg(feature = "js")]
+    /// Includs JS/TS util
+    js_util: bool,
 }
 
 impl<T, H> AFast<T, H>
@@ -293,7 +296,17 @@ where
             handlers: Arc::new(vec![]),
             #[cfg(feature = "js")]
             codes: std::collections::HashMap::new(),
+            #[cfg(feature = "js")]
+            js_util: true,
         }
+    }
+
+    #[cfg(feature = "js")]
+    /// Enable or disable JS/TS util
+    /// The service will take effect after this
+    pub fn disable_js_util(mut self) -> Self {
+        self.js_util = false;
+        self
     }
 
     /// Register a service with additional handlers
@@ -311,25 +324,45 @@ where
             }
             let header_code = H::to_js_type("_header").to_string();
 
-            let js_content = format!(
-                "{}\n\nclass AFastClient {{\noffset={};\n/**\n * Create client\n * @param {{{{header:()=>Promise<{}>,call:(buf:Uint8Array)=>Promise<Uint8Array>,}}}} options\n */\nconstructor(options){{this._options=options;if(!options.header){{throw new Error('header is required');}};this._header=options.header;if(!options.call){{throw new Error('call is required');}};this._call=options.call}}\n{}\n}}",
-                js::JS,
-                self.handlers.len(),
-                header_code,
-                utils::simple_js_builder(&handlers, true)
-            );
+            if self.js_util {
+                let js_content = format!(
+                    "{}\n\nclass AFastClient {{\noffset={};\n/**\n * Create client\n * @param {{{{header:()=>Promise<{}>,call:(buf:Uint8Array)=>Promise<Uint8Array>,}}}} options\n */\nconstructor(options){{this._options=options;if(!options.header){{throw new Error('header is required');}};this._header=options.header;if(!options.call){{throw new Error('call is required');}};this._call=options.call}}\n{}\n}}",
+                    js::JS,
+                    self.handlers.len(),
+                    header_code,
+                    utils::simple_js_builder(&handlers, true)
+                );
 
-            let ts_content = format!(
-                "{}type ClientHeader=()=>Promise<{}>;\ntype ClientOptions={{header:ClientHeader;call:ClientCall;[key: string]:any;}}\n\nclass AFastClient {{\noffset:number={};_options:ClientOptions;_header:ClientHeader;_call:ClientCall;\n/**\n * Create client\n * @param {{{{header:()=>Promise<{}>,call:(buf:Uint8Array)=>Promise<Uint8Array>,}}}} options\n */\nconstructor(options:ClientOptions){{this._options=options;if(!options.header){{throw new Error('header is required');}};this._header=options.header;if(!options.call){{throw new Error('call is required');}};this._call=options.call}}\n{}\n}}",
-                js::TS,
-                header_code,
-                self.handlers.len(),
-                header_code,
-                utils::simple_js_builder(&handlers, false)
-            );
+                let ts_content = format!(
+                    "{}type ClientHeader=()=>Promise<{}>;\ntype ClientOptions={{header:ClientHeader;call:ClientCall;[key: string]:any;}}\n\nclass AFastClient {{\noffset:number={};_options:ClientOptions;_header:ClientHeader;_call:ClientCall;\n/**\n * Create client\n * @param {{{{header:()=>Promise<{}>,call:(buf:Uint8Array)=>Promise<Uint8Array>,}}}} options\n */\nconstructor(options:ClientOptions){{this._options=options;if(!options.header){{throw new Error('header is required');}};this._header=options.header;if(!options.call){{throw new Error('call is required');}};this._call=options.call}}\n{}\n}}",
+                    js::TS,
+                    header_code,
+                    self.handlers.len(),
+                    header_code,
+                    utils::simple_js_builder(&handlers, false)
+                );
 
-            self.codes.insert(format!("{}/js", name), js_content);
-            self.codes.insert(format!("{}/ts", name), ts_content);
+                self.codes.insert(format!("{}/js", name), js_content);
+                self.codes.insert(format!("{}/ts", name), ts_content);
+            } else {
+                let js_content = format!(
+                    "class AFastClient {{\noffset={};\n/**\n * Create client\n * @param {{{{header:()=>Promise<{}>,call:(buf:Uint8Array)=>Promise<Uint8Array>,}}}} options\n */\nconstructor(options){{this._options=options;if(!options.header){{throw new Error('header is required');}};this._header=options.header;if(!options.call){{throw new Error('call is required');}};this._call=options.call}}\n{}\n}}",
+                    self.handlers.len(),
+                    header_code,
+                    utils::simple_js_builder(&handlers, true)
+                );
+
+                let ts_content = format!(
+                    "// @ts-nocheck\n\ntype ClientHeader=()=>Promise<{}>;\ntype ClientOptions={{header:ClientHeader;call:ClientCall;[key: string]:any;}}\n\nclass AFastClient {{\noffset:number={};_options:ClientOptions;_header:ClientHeader;_call:ClientCall;\n/**\n * Create client\n * @param {{{{header:()=>Promise<{}>,call:(buf:Uint8Array)=>Promise<Uint8Array>,}}}} options\n */\nconstructor(options:ClientOptions){{this._options=options;if(!options.header){{throw new Error('header is required');}};this._header=options.header;if(!options.call){{throw new Error('call is required');}};this._call=options.call}}\n{}\n}}",
+                    header_code,
+                    self.handlers.len(),
+                    header_code,
+                    utils::simple_js_builder(&handlers, false)
+                );
+
+                self.codes.insert(format!("{}/js", name), js_content);
+                self.codes.insert(format!("{}/ts", name), ts_content);
+            }
         }
 
         let existing_handlers = Arc::get_mut(&mut self.handlers).unwrap();
@@ -406,6 +439,14 @@ where
 
                         // Call handler
                         let handler = &handlers[id];
+
+                        let fut = (handler.middleware)(Arc::clone(&state), header.clone());
+                        match fut.await {
+                            Ok(_) => {}
+                            Err(_) => {
+                                continue;
+                            }
+                        }
                         let fut = (handler.func)(Arc::clone(&state), header, &body[size + 8..]);
                         let res = fut.await.unwrap();
 
@@ -463,6 +504,14 @@ where
 
                     // Call handler
                     let handler = &handlers[id];
+
+                    let fut = (handler.middleware)(Arc::clone(&state), header.clone());
+                    match fut.await {
+                        Ok(_) => {}
+                        Err(_) => {
+                            continue;
+                        }
+                    }
                     let fut = (handler.func)(Arc::clone(&state), header, &body[size + 8..]);
                     let res = fut.await.unwrap();
 
@@ -528,18 +577,16 @@ where
                         ]);
                         let handler = &handlers[id as usize];
 
-                        for mw in &handler.middlewares {
-                            let fut = mw(Arc::clone(&state), header.clone());
-                            match fut.await {
-                                Ok(_) => {}
-                                Err(e) => {
-                                    return axum::response::Response::builder()
-                                        .status(400)
-                                        .body(http_body_util::Full::new(axum::body::Bytes::from(
-                                            e.to_string(),
-                                        )))
-                                        .unwrap();
-                                }
+                        let fut = (handler.middleware)(Arc::clone(&state), header.clone());
+                        match fut.await {
+                            Ok(_) => {}
+                            Err(e) => {
+                                return axum::response::Response::builder()
+                                    .status(400)
+                                    .body(http_body_util::Full::new(axum::body::Bytes::from(
+                                        e.to_string(),
+                                    )))
+                                    .unwrap();
                             }
                         }
                         let fut = (handler.func)(Arc::clone(&state), header, &body[size + 4..]);
@@ -634,6 +681,15 @@ where
                                     ]) as usize;
 
                                     let handler = &handlers[id];
+
+                                    let fut =
+                                        (handler.middleware)(Arc::clone(&state), header.clone());
+                                    match fut.await {
+                                        Ok(_) => {}
+                                        Err(_) => {
+                                            continue;
+                                        }
+                                    }
                                     let fut = (handler.func)(
                                         Arc::clone(&state),
                                         header,
@@ -666,7 +722,8 @@ where
             );
 
             axum::serve(listener, app).await.unwrap();
+
+            Ok(())
         }
-        Ok(())
     }
 }

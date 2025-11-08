@@ -13,53 +13,8 @@ use syn::{
 ///
 /// The macro generates:
 /// - a renamed async function `__inner_xxx` preserving the original logic
-/// - a wrapper function returning a `(String, String, Vec<Box<Middleware>>, Box<Handler>)` suitable for AFast registration
+/// - a wrapper function returning a `(String, String, Box<Middleware>, Vec<String>, Box<Handler>)` suitable for AFast registration
 pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let args = parse_macro_input!(attr with Punctuated<Meta, token::Comma>::parse_terminated);
-    let mut desc = String::new();
-    let mut ms: Vec<String> = Vec::new();
-    let mut namespace: Vec<String> = Vec::new();
-    for arg in args {
-        match arg {
-            Meta::Path(_) => {}
-            Meta::List(meta) => {
-                if meta.path.is_ident("desc") {
-                    match meta.parse_args::<LitStr>() {
-                        Ok(lit) => {
-                            desc = format!(" * {}\n", lit.value());
-                        }
-                        Err(_) => {}
-                    }
-                }
-                if meta.path.is_ident("mws") {
-                    match meta.parse_args::<LitStr>() {
-                        Ok(lit) => {
-                            ms = lit
-                                .value()
-                                .split(",")
-                                .map(|s| s.trim().to_string())
-                                .collect();
-                        }
-                        Err(_) => {}
-                    }
-                }
-                if meta.path.is_ident("ns") {
-                    match meta.parse_args::<LitStr>() {
-                        Ok(lit) => {
-                            namespace = lit
-                                .value()
-                                .split(".")
-                                .map(|s| s.trim().to_string())
-                                .collect();
-                        }
-                        Err(_) => {}
-                    }
-                }
-            }
-            Meta::NameValue(_) => {}
-        }
-    }
-
     let input = parse_macro_input!(item as ItemFn);
 
     let ident = &input.sig.ident;
@@ -122,23 +77,62 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let inner_ident = syn::Ident::new(&format!("__inner_{}", ident), ident.span());
     let func_name = ident.to_string();
-
-    let mws: Vec<_> = ms
-        .iter()
-        .map(|s| {
-            let ident = format_ident!("{}", s);
-            quote! {
-                Box::new(|state: #state_ty, header: #header_ty| {
-                    Box::pin(async move {
-                        match #ident(state, header).await {
-                            Ok(_) => Ok(()),
-                            Err(e) => Err(afast::Error::server_error(500, e.to_string())),
-                        }
-                    })
-                })
-            }
+    let args = parse_macro_input!(attr with Punctuated<Meta, token::Comma>::parse_terminated);
+    let mut desc = String::new();
+    let mut mw = quote! {
+        Box::new(|state: #state_ty, header: #header_ty| {
+            Box::pin(async move {
+                Ok(())
+            })
         })
-        .collect();
+    };
+    let mut namespace: Vec<String> = Vec::new();
+    for arg in args {
+        match arg {
+            Meta::Path(_) => {}
+            Meta::List(meta) => {
+                if meta.path.is_ident("desc") {
+                    match meta.parse_args::<LitStr>() {
+                        Ok(lit) => {
+                            desc = format!(" * {}\n", lit.value());
+                        }
+                        Err(_) => {}
+                    }
+                }
+                if meta.path.is_ident("mw") {
+                    match meta.parse_args::<LitStr>() {
+                        Ok(lit) => {
+                            let ident = format_ident!("{}", lit.value().trim());
+                            mw = quote! {
+                                Box::new(|state: #state_ty, header: #header_ty| {
+                                    Box::pin(async move {
+                                        match #ident(state, header).await {
+                                            Ok(_) => Ok(()),
+                                            Err(e) => Err(afast::Error::server_error(500, e.to_string())),
+                                        }
+                                    })
+                                })
+                            };
+                        }
+                        Err(_) => {}
+                    }
+                }
+                if meta.path.is_ident("ns") {
+                    match meta.parse_args::<LitStr>() {
+                        Ok(lit) => {
+                            namespace = lit
+                                .value()
+                                .split(".")
+                                .map(|s| s.trim().to_string())
+                                .collect();
+                        }
+                        Err(_) => {}
+                    }
+                }
+            }
+            Meta::NameValue(_) => {}
+        }
+    }
 
     let expanded = quote! {
         /// The inner async function preserving the original user logic.
@@ -153,14 +147,14 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
         #vis fn #ident(id: u32) -> (
             String,
             String,
-            Vec<Box<
+            Box<
                 dyn Fn(
                     #state_ty,
                     #header_ty,
                 ) -> std::pin::Pin<
                     Box<dyn std::future::Future<Output = Result<(), afast::Error>> + Send>
                 > + Send + Sync + 'static,
-            >>,
+            >,
             Vec<String>,
             Box<
                 dyn Fn(
@@ -220,7 +214,7 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
             (
                 js.join(""),
                 ts.join(""),
-                vec![#(#mws)*],
+                #mw,
                 vec![#(#namespace.to_string()),*],
                 Box::new(|state: #state_ty, header: #header_ty, req: &[u8]| {
                     let req = #req_ty::from_bytes(req);
@@ -259,13 +253,13 @@ pub fn register(input: TokenStream) -> TokenStream {
 
         registrations.push(quote! {
             {
-                let (js, ts, middlewares, namespace, func) = #func(#id);
+                let (js, ts, middleware, namespace, func) = #func(#id);
                 afast::HandlerGeneric {
                     id: #id,
                     name: #name,
                     js,
                     ts,
-                    middlewares,
+                    middleware,
                     namespace,
                     func,
                 }
