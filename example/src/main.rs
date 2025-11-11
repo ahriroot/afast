@@ -1,14 +1,14 @@
 use std::sync::{Arc, Mutex};
 
-use afast::{AFast, AFastData, Error, handler, register};
+use afast::{AFast, AFastData, AFastKind, Error, Field, Kind, Tag, handler, register};
 
-#[derive(Debug, Clone, AFastData)]
+#[derive(Debug, Clone, AFastData, AFastKind)]
 enum Sex {
     Male { id: i64 },
     Female { name: String },
 }
 
-#[derive(Debug, Clone, AFastData)]
+#[derive(Debug, Clone, AFastData, AFastKind)]
 struct Request {
     id: i64,
     name: String,
@@ -24,13 +24,13 @@ struct Request {
     sex: Sex,
 }
 
-#[derive(Debug, Clone, AFastData)]
+#[derive(Debug, Clone, AFastData, AFastKind)]
 struct Hobby {
     id: i64,
     name: String,
 }
 
-#[derive(Debug, AFastData)]
+#[derive(Debug, AFastData, AFastKind)]
 pub struct Response {
     sex: Sex,
     id: i64,
@@ -63,12 +63,12 @@ async fn auth(_state: Arc<Mutex<String>>, header: Header) -> Result<(), Error> {
     Ok(())
 }
 
-#[derive(Debug, AFastData)]
+#[derive(Debug, AFastData, AFastKind)]
 struct Req2 {
     id: i64,
 }
 
-#[derive(Debug, AFastData)]
+#[derive(Debug, AFastData, AFastKind)]
 struct Resp2 {
     id: i64,
     name: String,
@@ -82,7 +82,7 @@ async fn get_id(_state: Arc<Mutex<String>>, _header: Header, req: Req2) -> Resul
     })
 }
 
-#[derive(Debug, Clone, AFastData)]
+#[derive(Debug, Clone, AFastData, AFastKind)]
 struct Header {
     id: u32,
 }
@@ -91,9 +91,8 @@ struct Header {
 async fn main() {
     let state = Arc::new(Mutex::new("".to_string()));
 
-    let server = AFast::<Mutex<String>, Header>::new(state)
-        .disable_js_util()
-        .service("user", register! { get_user, get_id });
+    let server =
+        AFast::<Mutex<String>, Header>::new(state).service("user", register! { get_user, get_id });
 
     server
         .serve(

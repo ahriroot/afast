@@ -13,17 +13,17 @@ constructor(options){this._options=options;if(!options.header){throw new Error('
 api = {
 /**
  * Get user by id
- * @param {{id:number;}} request
- * @returns {{id:number;name:string;}}
+ * @param {{id:number}} request
+ * @returns {{id:number,name:string}}
  */
-get_id: async (request) => {const _b1 = new AFastByteBuffer();const _header = await this._header();_b1.pU32(_header.id);_b1.pU32(1+this.offset);_b1.pI64(request.id);const _b2 = new AFastByteReader(await this._call(_b1.tU8A()));_b2.rI32();const response = {id:_b2.rI64(),name:_b2.rS(),};return response;},
+get_id: async (request) => {const _b1 = new AFastByteBuffer();const _header = await this._header();_b1.pU32(_header.id);_b1.pU32(1+this.offset);_b1.pI64(request.id);const _b2 = new AFastByteReader(await this._call(_b1.tU8A()));_b2.rI32();const response={id:_b2.rI64(),name:_b2.rS()};return response;},
 user: {
 /**
  * Get user information
- * @param {{id:number;name:string;age:number;hobbies:Array<{id:number;name:string;}>;tags:Array<string>;gender:boolean|null;sex:{_type:0;id:number;}|{_type:1;name:string;};}} request
- * @returns {{sex:{_type:0;id:number;}|{_type:1;name:string;};id:number;name:string;age:number;hobbies:Array<{id:number;name:string;}>;tags:Array<string>;gender:boolean|null;}}
+ * @param {{id:number,name:string,age:number,hobbies:Array<{id:number,name:string}>,tags:Array<string>,gender:boolean|null,sex:{_type:0,id:number}|{_type:1,name:string}}} request
+ * @returns {{sex:{_type:0,id:number}|{_type:1,name:string},id:number,name:string,age:number,hobbies:Array<{id:number,name:string}>,tags:Array<string>,gender:boolean|null}}
  */
-get_user: async (request) => {if (request.age === 0) throw new AFastValidateError('name is required');if (request.age < 1) throw new AFastValidateError('name must be at least 1 character long');if (request.age > 100) throw new AFastValidateError('name must be at most 10 characters long');const _b1 = new AFastByteBuffer();const _header = await this._header();_b1.pU32(_header.id);_b1.pU32(0+this.offset);_b1.pI64(request.id);_b1.pS(request.name);_b1.pU32(request.age);_b1.pU32(request.hobbies.length);for(let __item_0 of request.hobbies){_b1.pI64(__item_0.id);_b1.pS(__item_0.name);}_b1.pU32(request.tags.length);for(let __item_0 of request.tags){_b1.pS(__item_0);}if(request.gender === null)_b1.pU8(0);else{_b1.pU8(1);_b1.pB(request.gender);}_b1.pU32(request.sex._type);switch (request.sex._type) {case 0:_b1.pI64(request.sex.id);break;case 1:_b1.pS(request.sex.name);break;default:throw new Error('unknown variant');}const _b2 = new AFastByteReader(await this._call(_b1.tU8A()));_b2.rI32();const response = {sex:{...(function(){switch (_b2.rU32()) {case 0: return {id:_b2.rI64(),};case 1: return {name:_b2.rS(),};default:throw new Error('unknown variant');}}())},id:_b2.rI64(),name:_b2.rS(),age:_b2.rU32(),hobbies:Array.from({length:_b2.rU32()},()=>({id:_b2.rI64(),name:_b2.rS(),})),tags:Array.from({length:_b2.rU32()},()=>(_b2.rS())),gender:_b2.rU8() === 0 ? null : _b2.rB(),};return response;}
+get_user: async (request) => {if(request.age===undefined||request.age===null) throw new AFastValidateError("name is required");if(request.age<1)throw new AFastValidateError("name must be at least 1 character long");if(request.age>100)throw new AFastValidateError("name must be at most 10 characters long");if(request.sex._type===undefined)throw new AFastValidateError('Missing _type field in request.sex');if(![0,1].includes(request.sex._type))throw new AFastValidateError(`Invalid _type field in request.sex: ${request.sex._type} not in [0,1]`);const _b1 = new AFastByteBuffer();const _header = await this._header();_b1.pU32(_header.id);_b1.pU32(0+this.offset);_b1.pI64(request.id);_b1.pS(request.name);_b1.pU32(request.age);_b1.pU32(request.hobbies.length);for(let _i1 of request.hobbies){_b1.pI64(_i1.id);_b1.pS(_i1.name);}_b1.pU32(request.tags.length);for(let _i1 of request.tags){_b1.pS(_i1);}if(request.gender===null){_b1.pU8(0);}else{_b1.pU8(1);_b1.pB(request.gender);}_b1.pU32(request.sex._type);switch(request.sex._type){case 0:_b1.pI64(request.sex.id);break;case 1:_b1.pS(request.sex.name);break;}const _b2 = new AFastByteReader(await this._call(_b1.tU8A()));_b2.rI32();const response={sex:{...(function(){const _type = _b2.rU32();switch (_type){case 0:return {id:_b2.rI64()};case 1:return {name:_b2.rS()};default:throw new Error('unknown variant');}}())},id:_b2.rI64(),name:_b2.rS(),age:_b2.rU32(),hobbies:Array.from({length:_b2.rU32()},()=>({id:_b2.rI64(),name:_b2.rS()})),tags:Array.from({length:_b2.rU32()},()=>(_b2.rS())),gender:_b2.rU8()===1?_b2.rB():null};return response;}
 }
 }
 }

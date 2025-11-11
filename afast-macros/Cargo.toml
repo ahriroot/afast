@@ -23,4 +23,7 @@ syn = { version = "2.0", features = ["full"] }
 
 [features]
 default = []
-js = []
+js = ["code"]
+ts = ["code"]
+doc = ["code"]
+code = []
