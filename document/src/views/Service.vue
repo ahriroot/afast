@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onBeforeMount, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { NCode, NButton, NCollapse, NCollapseItem, NScrollbar, NSpace, useMessage } from 'naive-ui'
+import { NCode, NButton, NCollapse, NCollapseItem, NScrollbar, NSpace, useMessage, NCheckbox, NCard } from 'naive-ui'
 import hljs from 'highlight.js/lib/core'
 import json from 'highlight.js/lib/languages/json'
 import JsonEditor from '../components/JsonEditor.vue'
@@ -70,9 +70,7 @@ onBeforeMount(async () => {
                 data: generateDefault(resp.request.fields as any),
                 api: resp,
                 resp: null,
-                schema: resp.request,
-                ns: resp.ns,
-                name: resp.name
+                preview: false,
             })
         }
     } catch (e: any) {
@@ -82,24 +80,19 @@ onBeforeMount(async () => {
 })
 
 function safeStringify(obj: any) {
-    return JSON.stringify(obj, (_, value) => {
-        if (typeof value === 'bigint') {
-            return value.toString() + 'n'; // 或者直接 return value.toString()
-        }
-        return value;
-    }, 4);
+    return JSON.stringify(obj, null, 4);
 }
 
 
 const submit = async (index: number) => {
-    const { ns, name, data } = services.value[index]
+    const { api, data } = services.value[index]
     let fn: any = client.value
-    for (let n of ns) {
+    for (let n of api.ns) {
         fn = fn[n]
     }
-    if (fn && fn[name]) {
+    if (fn && fn[api.name]) {
         try {
-            const resp = await fn[name](data)
+            const resp = await fn[api.name](data)
             services.value[index].resp = resp
         } catch (e: any) {
             if (error.value && e instanceof error.value) {
@@ -108,6 +101,8 @@ const submit = async (index: number) => {
                 message.error(e.message || e.toString())
             }
         }
+    } else {
+        message.error(`API ${api.name} not found`)
     }
 }
 </script>
@@ -128,12 +123,19 @@ const submit = async (index: number) => {
                             123
                         </template>
                         <div class="api">
-                            <JsonEditor :schema="i.api.request" v-model:modelValue="i.data" />
-                            <NButton @click="submit(index)">Submit</NButton>
-                            <NCode :code="safeStringify(i.data)" :language="'json'" />
-                            <br />
-                            <NCode :code="safeStringify(i.resp)" :language="'json'" />
-                            <br />
+                            <NSpace vertical>
+                                <JsonEditor :schema="i.api.request" v-model:modelValue="i.data" />
+                                <NSpace align="center" justify="end">
+                                    <NCheckbox v-model:checked="i.preview" label="Preview" />
+                                    <NButton @click="submit(index)">Send</NButton>
+                                </NSpace>
+                                <NCard title="Request" v-if="i.preview">
+                                    <NCode :code="safeStringify(i.data)" :language="'json'" />
+                                </NCard>
+                                <NCard title="Response">
+                                    <NCode :code="safeStringify(i.resp)" :language="'json'" />
+                                </NCard>
+                            </NSpace>
                         </div>
                     </NCollapseItem>
                 </NCollapse>
@@ -152,7 +154,7 @@ const submit = async (index: number) => {
 }
 
 .container {
-    max-width: 1200px;
+    max-width: 1000px;
     margin: 0 auto;
     padding: 20px 0;
 }

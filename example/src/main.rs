@@ -5,24 +5,37 @@ use afast::{AFast, AFastData, AFastKind, Error, Field, Kind, Tag, handler, regis
 #[derive(Debug, Clone, AFastData, AFastKind)]
 enum Sex {
     Other,
-    Custom(i32, String),
-    Male { id: i64 },
-    Female { name: String },
+    Custom(#[validate(desc("Custom user sex 0"))] i32, String),
+    Male {
+        #[validate(desc("Male user id"))]
+        id: i64,
+    },
+    Female {
+        #[validate(desc("Female user name"))]
+        name: String,
+    },
 }
 
 #[derive(Debug, Clone, AFastData, AFastKind)]
 struct Request {
+    #[validate(desc("User ID"))]
     id: i64,
+    #[validate(desc("User name"))]
     name: String,
     #[validate(
-        required("name is required"),
-        min(1, "name must be at least 1 character long"),
-        max(100, "name must be at most 10 characters long")
+        desc("User age"),
+        required("age is required"),
+        min(1, "age must be at least 1"),
+        max(256, "age must be at most 256")
     )]
     age: u32,
+    #[validate(desc("User hobbies"))]
     hobbies: Vec<Hobby>,
+    #[validate(desc("User tags"))]
     tags: Vec<String>,
+    #[validate(desc("User gender"))]
     gender: Option<bool>,
+    #[validate(desc("User sex"))]
     sex: Sex,
 }
 

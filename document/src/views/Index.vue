@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onBeforeMount, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { NScrollbar } from 'naive-ui'
+import { NCard, NScrollbar, NSpace } from 'naive-ui'
 
 const baseURL = import.meta.env.VITE_BASE_URL
 const router = useRouter()
@@ -22,9 +22,13 @@ const handleToService = (svc: any) => {
         <NScrollbar>
             <div class="container">
                 <div class="service" v-for="svc in services.services" @click="handleToService(svc)">
-                    <h2>{{ svc.name }}</h2>
-                    <p>{{ svc.desc }}</p>
-                    <span>{{ svc.count }} handlers</span>
+                    <NCard>
+                        <NSpace align="center">
+                            <h2>{{ svc.name }}</h2>
+                            <p>{{ svc.desc }}</p>
+                            <span>{{ svc.count }} Handlers</span>
+                        </NSpace>
+                    </NCard>
                 </div>
             </div>
         </NScrollbar>
@@ -41,8 +45,12 @@ const handleToService = (svc: any) => {
 }
 
 .container {
-    max-width: 1200px;
+    max-width: 800px;
     margin: 0 auto;
     padding: 20px 0;
+}
+
+.service {
+    cursor: pointer;
 }
 </style>

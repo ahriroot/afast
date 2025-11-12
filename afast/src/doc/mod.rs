@@ -4,11 +4,42 @@ use crate::HandlerGeneric;
 
 use super::Field;
 use super::Kind;
+use super::Tag;
+
+impl Tag {
+    pub fn gen_doc(&self) -> String {
+        let mut parts = Vec::new();
+
+        if let Some(name) = &self.name {
+            parts.push(format!(r#""name":"{}""#, name));
+        }
+        if let Some(description) = &self.description {
+            parts.push(format!(r#""description":"{}""#, description));
+        }
+        if let Some(required) = &self.required {
+            parts.push(format!(r#""required":"{}""#, required));
+        }
+        if let Some((min, unit)) = &self.min {
+            parts.push(format!(r#""min":{{"value":{},"unit":"{}"}}"#, min, unit));
+        }
+        if let Some((max, unit)) = &self.max {
+            parts.push(format!(r#""max":{{"value":{},"unit":"{}"}}"#, max, unit));
+        }
+
+        format!("{{{}}}", parts.join(","))
+    }
+}
 
 impl Field {
     pub fn gen_doc(&self) -> String {
+
         let kind_doc = self.kind.gen_doc();
-        format!(r#"{{"name":"{}",{}}}"#, self.name, kind_doc)
+        let tag_doc = if let Some(tag) = &self.tag {
+            tag.gen_doc()
+        } else {
+            "null".to_string()
+        };
+        format!(r#"{{"name":"{}","tag":{},{}}}"#, self.name, tag_doc, kind_doc)
     }
 }
 

@@ -11,7 +11,7 @@ export const generateDefault = (schema: FieldDef[]): Record<string, any> => {
                 result[field.name] = []
                 break
             case 'number':
-                result[field.name] = 0
+                result[field.name] = field.tag?.min?.value || 0
                 break
             case 'boolean':
                 result[field.name] = false
@@ -20,21 +20,13 @@ export const generateDefault = (schema: FieldDef[]): Record<string, any> => {
                 result[field.name] = ''
                 break
             case 'enum':
+                console.log(field.variants)
                 switch (field.variants[0]!.kind) {
                     case 'object':
                         result[field.name] = {_type:0,...generateDefault(field.variants[0]!.fields)}
                         break
-                    case 'array':
-                        result[field.name] = []
-                        break
-                    case 'number':
-                        result[field.name] = 0
-                        break
-                    case 'boolean':
-                        result[field.name] = false
-                        break
-                    case 'string':
-                        result[field.name] = ''
+                    case 'unit':
+                        result[field.name] = {_type:0}
                         break
                     default:
                         break
