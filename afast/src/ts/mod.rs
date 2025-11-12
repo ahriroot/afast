@@ -1,9 +1,8 @@
-pub const TS: &str = r#"// @ts-nocheck
-
-class AFastByteBuffer{private encoder:TextEncoder;private buf:ArrayBuffer;private view:DataView;private length:number;constructor(size:number=64){this.encoder=new TextEncoder();this.buf=new ArrayBuffer(size);this.view=new DataView(this.buf);this.length=0}private ensure(size:number):void{if(this.length+size>this.buf.byteLength){let newSize=this.buf.byteLength*2;while(newSize<this.length+size)newSize*=2;const newBuf=new ArrayBuffer(newSize);new Uint8Array(newBuf).set(new Uint8Array(this.buf,0,this.length));this.buf=newBuf;this.view=new DataView(this.buf)}}pBy(b:number):void{this.ensure(1);this.view.setUint8(this.length,b);this.length+=1}pBys(arr:Uint8Array):void{this.ensure(arr.length);new Uint8Array(this.buf,this.length,arr.length).set(arr);this.length+=arr.length}pB(b:boolean):void{this.pBy(b?1:0)}pI8(n:number):void{this.ensure(1);this.view.setInt8(this.length,n);this.length+=1}pU8(n:number):void{this.ensure(1);this.view.setUint8(this.length,n);this.length+=1}pI16(n:number):void{this.ensure(2);this.view.setInt16(this.length,n,false);this.length+=2}pU16(n:number):void{this.ensure(2);this.view.setUint16(this.length,n,false);this.length+=2}pI32(n:number):void{this.ensure(4);this.view.setInt32(this.length,n,false);this.length+=4}pU32(n:number):void{this.ensure(4);this.view.setUint32(this.length,n,false);this.length+=4}pI64(n:number):void{this.ensure(8);const high=Math.floor(n/2**32);const low=n>>>0;this.view.setInt32(this.length,high,false);this.view.setInt32(this.length+4,low,false);this.length+=8}pU64(n:number):void{this.ensure(8);const high=Math.floor(n/2**32);const low=n>>>0;this.view.setUint32(this.length,high,false);this.view.setUint32(this.length+4,low,false);this.length+=8}pI128(n:number):void{this.ensure(16);const highHigh=0;const highLow=Math.floor(n/2**32);const lowHigh=n>>>0;const lowLow=0;this.view.setUint32(this.length,highHigh,false);this.view.setUint32(this.length+4,highLow,false);this.view.setUint32(this.length+8,lowHigh,false);this.view.setUint32(this.length+12,lowLow,false);this.length+=16}pU128(n:number):void{this.ensure(16);const highHigh=0;const highLow=Math.floor(n/2**32);const lowHigh=n>>>0;const lowLow=0;this.view.setUint32(this.length,highHigh,false);this.view.setUint32(this.length+4,highLow,false);this.view.setUint32(this.length+8,lowHigh,false);this.view.setUint32(this.length+12,lowLow,false);this.length+=16}pF32(n:number):void{this.ensure(4);this.view.setFloat32(this.length,n,false);this.length+=4}pF64(n:number):void{this.ensure(8);this.view.setFloat64(this.length,n,false);this.length+=8}pS(str:string):void{const bytes=this.encoder.encode(str);this.pU32(bytes.length);this.pBys(bytes)}tU8A():Uint8Array{return new Uint8Array(this.buf,0,this.length)}}
-class AFastByteReader{private buf:ArrayBuffer;private view:DataView;private offset:number;constructor(uint8Array:Uint8Array){this.buf=uint8Array.buffer as ArrayBuffer;this.view=new DataView(this.buf,uint8Array.byteOffset,uint8Array.byteLength);this.offset=0}private check(len:number):void{if(this.offset+len>this.view.byteLength){throw new Error(`Out of range:trying to read ${len}bytes,but only ${this.view.byteLength-this.offset}left`)}}rBy():number{this.check(1);const v=this.view.getUint8(this.offset);this.offset+=1;return v}rBys(len:number):Uint8Array{this.check(len);const bytes=new Uint8Array(this.view.buffer,this.view.byteOffset+this.offset,len);this.offset+=len;return bytes}rB():boolean{const v=this.rBy();return v!==0}rI8():number{this.check(1);const v=this.view.getInt8(this.offset);this.offset+=1;return v}rU8():number{this.check(1);const v=this.view.getUint8(this.offset);this.offset+=1;return v}rI16():number{this.check(2);const v=this.view.getInt16(this.offset,false);this.offset+=2;return v}rU16():number{this.check(2);const v=this.view.getUint16(this.offset,false);this.offset+=2;return v}rI32():number{this.check(4);const v=this.view.getInt32(this.offset,false);this.offset+=4;return v}rU32():number{this.check(4);const v=this.view.getUint32(this.offset,false);this.offset+=4;return v}rI64():number{this.check(8);const v=this.view.getBigInt64(this.offset,false);this.offset+=8;return Number(v)}rU64():number{this.check(8);const v=this.view.getBigUint64(this.offset,false);this.offset+=8;return Number(v)}rI128():number{this.check(16);const high=this.view.getBigInt64(this.offset,false);const low=this.view.getBigUint64(this.offset+8,false);this.offset+=16;return Number((high<<64n)|low)}rU128():number{this.check(16);const high=this.view.getBigUint64(this.offset,false);const low=this.view.getBigUint64(this.offset+8,false);this.offset+=16;return Number((high<<64n)|low)}rF32():number{this.check(4);const v=this.view.getFloat32(this.offset,false);this.offset+=4;return v}rF64():number{this.check(8);const v=this.view.getFloat64(this.offset,false);this.offset+=8;return v}rS():string{const len=this.rU32();const bytes=this.rBys(len);const decoder=new TextDecoder();return decoder.decode(bytes)}eof():boolean{return this.offset>=this.view.byteLength}}
-class AFastValidateError extends Error{constructor(message:string){super(message);this.name=new.target.name;if((Error as any).captureStackTrace){(Error as any).captureStackTrace(this,new.target)}}}
-type ClientCall=(data: Uint8Array)=>Promise<Uint8Array>;
+pub const TS: &str = r#"export class AFastByteBuffer{private encoder:TextEncoder;private buf:ArrayBuffer;private view:DataView;private length:number;constructor(size:number=64){this.encoder=new TextEncoder();this.buf=new ArrayBuffer(size);this.view=new DataView(this.buf);this.length=0}private ensure(size:number):void{if(this.length+size>this.buf.byteLength){let newSize=this.buf.byteLength*2;while(newSize<this.length+size)newSize*=2;const newBuf=new ArrayBuffer(newSize);new Uint8Array(newBuf).set(new Uint8Array(this.buf,0,this.length));this.buf=newBuf;this.view=new DataView(this.buf)}}pBy(b:number):void{this.ensure(1);this.view.setUint8(this.length,b);this.length+=1}pBys(arr:Uint8Array):void{this.ensure(arr.length);new Uint8Array(this.buf,this.length,arr.length).set(arr);this.length+=arr.length}pB(b:boolean):void{this.pBy(b?1:0)}pI8(n:number):void{this.ensure(1);this.view.setInt8(this.length,n);this.length+=1}pU8(n:number):void{this.ensure(1);this.view.setUint8(this.length,n);this.length+=1}pI16(n:number):void{this.ensure(2);this.view.setInt16(this.length,n,false);this.length+=2}pU16(n:number):void{this.ensure(2);this.view.setUint16(this.length,n,false);this.length+=2}pI32(n:number):void{this.ensure(4);this.view.setInt32(this.length,n,false);this.length+=4}pU32(n:number):void{this.ensure(4);this.view.setUint32(this.length,n,false);this.length+=4}pI64(n:number):void{this.ensure(8);const high=Math.floor(n/2**32);const low=n>>>0;this.view.setInt32(this.length,high,false);this.view.setInt32(this.length+4,low,false);this.length+=8}pU64(n:number):void{this.ensure(8);const high=Math.floor(n/2**32);const low=n>>>0;this.view.setUint32(this.length,high,false);this.view.setUint32(this.length+4,low,false);this.length+=8}pI128(n:number):void{this.ensure(16);const highHigh=0;const highLow=Math.floor(n/2**32);const lowHigh=n>>>0;const lowLow=0;this.view.setUint32(this.length,highHigh,false);this.view.setUint32(this.length+4,highLow,false);this.view.setUint32(this.length+8,lowHigh,false);this.view.setUint32(this.length+12,lowLow,false);this.length+=16}pU128(n:number):void{this.ensure(16);const highHigh=0;const highLow=Math.floor(n/2**32);const lowHigh=n>>>0;const lowLow=0;this.view.setUint32(this.length,highHigh,false);this.view.setUint32(this.length+4,highLow,false);this.view.setUint32(this.length+8,lowHigh,false);this.view.setUint32(this.length+12,lowLow,false);this.length+=16}pF32(n:number):void{this.ensure(4);this.view.setFloat32(this.length,n,false);this.length+=4}pF64(n:number):void{this.ensure(8);this.view.setFloat64(this.length,n,false);this.length+=8}pS(str:string):void{const bytes=this.encoder.encode(str);this.pU32(bytes.length);this.pBys(bytes)}tU8A():Uint8Array{return new Uint8Array(this.buf,0,this.length)}}
+export class AFastByteReader{private buf:ArrayBuffer;private view:DataView;private offset:number;constructor(uint8Array:Uint8Array){this.buf=uint8Array.buffer as ArrayBuffer;this.view=new DataView(this.buf,uint8Array.byteOffset,uint8Array.byteLength);this.offset=0}private check(len:number):void{if(this.offset+len>this.view.byteLength){throw new Error(`Out of range:trying to read ${len}bytes,but only ${this.view.byteLength-this.offset}left`)}}rBy():number{this.check(1);const v=this.view.getUint8(this.offset);this.offset+=1;return v}rBys(len:number):Uint8Array{this.check(len);const bytes=new Uint8Array(this.view.buffer,this.view.byteOffset+this.offset,len);this.offset+=len;return bytes}rB():boolean{const v=this.rBy();return v!==0}rI8():number{this.check(1);const v=this.view.getInt8(this.offset);this.offset+=1;return v}rU8():number{this.check(1);const v=this.view.getUint8(this.offset);this.offset+=1;return v}rI16():number{this.check(2);const v=this.view.getInt16(this.offset,false);this.offset+=2;return v}rU16():number{this.check(2);const v=this.view.getUint16(this.offset,false);this.offset+=2;return v}rI32():number{this.check(4);const v=this.view.getInt32(this.offset,false);this.offset+=4;return v}rU32():number{this.check(4);const v=this.view.getUint32(this.offset,false);this.offset+=4;return v}rI64():number{this.check(8);const v=this.view.getBigInt64(this.offset,false);this.offset+=8;return Number(v)}rU64():number{this.check(8);const v=this.view.getBigUint64(this.offset,false);this.offset+=8;return Number(v)}rI128():number{this.check(16);const high=this.view.getBigInt64(this.offset,false);const low=this.view.getBigUint64(this.offset+8,false);this.offset+=16;return Number((high<<64n)|low)}rU128():number{this.check(16);const high=this.view.getBigUint64(this.offset,false);const low=this.view.getBigUint64(this.offset+8,false);this.offset+=16;return Number((high<<64n)|low)}rF32():number{this.check(4);const v=this.view.getFloat32(this.offset,false);this.offset+=4;return v}rF64():number{this.check(8);const v=this.view.getFloat64(this.offset,false);this.offset+=8;return v}rS():string{const len=this.rU32();const bytes=this.rBys(len);const decoder=new TextDecoder();return decoder.decode(bytes)}eof():boolean{return this.offset>=this.view.byteLength}}
+export class AFastValidateError extends Error{constructor(message:string){super(message);this.name=new.target.name;if((Error as any).captureStackTrace){(Error as any).captureStackTrace(this,new.target)}}}
+export type ClientCall=(data: Uint8Array)=>Promise<Uint8Array>;
+export type Options = {header:ClientHeader,call:ClientCall,[key:string|number|symbol]:any}
 "#;
 
 use crate::AFastData;
@@ -90,6 +89,13 @@ impl Kind {
                 }
                 code
             }
+            Kind::Tuple(elements) => {
+                let mut code = String::new();
+                for (i, elem) in elements.iter().enumerate() {
+                    code.push_str(&elem.gen_ts_to_bytes(&format!("{}[{}]", name, i), depth + 1));
+                }
+                code
+            }
             Kind::Nullable(kind) => {
                 let mut code = String::new();
                 code.push_str(&format!(
@@ -128,16 +134,57 @@ impl Kind {
                 code
             }
             Kind::Enum { variants } => {
-                let mut code = String::new();
-                code.push_str("{...(function(){const _type = _b2.rU32();switch (_type){");
+                let mut code = String::from("(() => {");
+                code.push_str("let _type = _b2.rU32();");
+                code.push_str("switch(_type) {");
+
                 for (i, variant) in variants.iter().enumerate() {
                     code.push_str(&format!(
-                        "case {}:return {};",
+                        "case {}: return {};",
                         i,
-                        variant.gen_bytes_to_ts(depth)
+                        match variant {
+                            // 结构体变体：Enum::Variant { a, b }
+                            Kind::Struct { fields } => {
+                                let field_code = fields
+                                    .iter()
+                                    .map(|f| {
+                                        format!("{}: {}", f.name, f.kind.gen_bytes_to_ts(depth + 1))
+                                    })
+                                    .collect::<Vec<_>>()
+                                    .join(", ");
+                                format!("({{ _type: {}, {} }})", i, field_code)
+                            }
+
+                            // 元组变体：Enum::Variant(i32, String, ...)
+                            Kind::Tuple(elements) => {
+                                if elements.is_empty() {
+                                    // 空元组
+                                    format!("({{ _type: {} }})", i)
+                                } else if elements.len() == 1 {
+                                    // 单值元组 => { _type: X, value: T }
+                                    format!(
+                                        "({{ _type: {}, value: {} }})",
+                                        i,
+                                        elements[0].gen_bytes_to_ts(depth + 1)
+                                    )
+                                } else {
+                                    // 多值元组 => { _type: X, values: [T1, T2, ...] }
+                                    let values = elements
+                                        .iter()
+                                        .map(|e| e.gen_bytes_to_ts(depth + 1))
+                                        .collect::<Vec<_>>()
+                                        .join(", ");
+                                    format!("({{ _type: {}, values: [{}] }})", i, values)
+                                }
+                            }
+
+                            // 单值或空值：Enum::Variant 或 Enum::Variant(Unit)
+                            _ => format!("({{ _type: {} }})", i),
+                        }
                     ));
                 }
-                code.push_str("default:throw new Error('unknown variant');}}())}");
+
+                code.push_str("}})()");
                 code
             }
             Kind::Struct { fields } => {
@@ -150,6 +197,18 @@ impl Kind {
                         .join(","),
                 );
                 format!("{{{}}}", code)
+            }
+            Kind::Tuple(elements) => {
+                if elements.is_empty() {
+                    "([])".to_string()
+                } else {
+                    let parts = elements
+                        .iter()
+                        .map(|e| e.gen_bytes_to_ts(depth + 1))
+                        .collect::<Vec<_>>()
+                        .join(",");
+                    format!("[{}]", parts)
+                }
             }
             Kind::Nullable(kind) => {
                 let mut code = String::new();
@@ -221,6 +280,20 @@ impl Kind {
                         .join(","),
                 );
                 format!("{{{}}}", code)
+            }
+            Kind::Tuple(elements) => {
+                if elements.is_empty() {
+                    "[]".to_string()
+                } else {
+                    format!(
+                        "[{}]",
+                        elements
+                            .iter()
+                            .map(|e| e.gen_ts_type())
+                            .collect::<Vec<_>>()
+                            .join(",")
+                    )
+                }
             }
             Kind::Nullable(kind) => {
                 let inner_type = kind.gen_ts_type();
@@ -391,6 +464,15 @@ impl Kind {
                     validations.push(format!("switch({}._type){{{}}}", name, cases.join("")));
                 }
             }
+            Kind::Tuple(elements) => {
+                for (i, elem) in elements.iter().enumerate() {
+                    let item_name = format!("{}[{}]", name, i);
+                    let item_validation = elem.gen_ts_validate(&item_name, tag, depth + 1);
+                    if !item_validation.is_empty() {
+                        validations.push(item_validation);
+                    }
+                }
+            }
             _ => {}
         }
 
@@ -501,8 +583,9 @@ where
     if util {
         let header_code = H::kind().gen_ts_type().to_string();
         let ts_content = format!(
-            "{}\n\nexport class AFastClient {{\noffset={};\n/**\n * Create client\n * @param {{{{header:()=>Promise<{}>,call:(buf:Uint8Array)=>Promise<Uint8Array>,}}}} options\n */\nconstructor(options){{this._options=options;if(!options.header){{throw new Error('header is required');}};this._header=options.header;if(!options.call){{throw new Error('call is required');}};this._call=options.call}}\n{}\n}}",
+            "// @ts-nocheck\n\n{}\nexport type ClientHeader=()=>Promise<{}>\n\nexport class AFastClient {{\n_options:Options;\n_header:ClientHeader;\n_call:ClientCall;\noffset={};\n/**\n * Create client\n * @param {{{{header:()=>Promise<{}>,call:(buf:Uint8Array)=>Promise<Uint8Array>,}}}} options\n */\nconstructor(options:Options){{this._options=options;if(!options.header){{throw new Error('header is required');}};this._header=options.header;if(!options.call){{throw new Error('call is required');}};this._call=options.call}}\n{}\n}}",
             TS,
+            header_code,
             index,
             header_code,
             simple_ts_builder(&handlers)
@@ -511,7 +594,8 @@ where
     } else {
         let header_code = H::kind().gen_ts_type().to_string();
         let ts_content = format!(
-            "export class AFastClient {{\noffset={};\n/**\n * Create client\n * @param {{{{header:()=>Promise<{}>,call:(buf:Uint8Array)=>Promise<Uint8Array>,}}}} options\n */\nconstructor(options){{this._options=options;if(!options.header){{throw new Error('header is required');}};this._header=options.header;if(!options.call){{throw new Error('call is required');}};this._call=options.call}}\n{}\n}}",
+            "// @ts-nocheck\n\nexport type ClientHeader=()=>Promise<{}>\n\nexport class AFastClient {{\n_options:Options;\n_header:ClientHeader;\n_call:ClientCall;\noffset={};\n/**\n * Create client\n * @param {{{{header:()=>Promise<{}>,call:(buf:Uint8Array)=>Promise<Uint8Array>,}}}} options\n */\nconstructor(options:Options){{this._options=options;if(!options.header){{throw new Error('header is required');}};this._header=options.header;if(!options.call){{throw new Error('call is required');}};this._call=options.call}}\n{}\n}}",
+            header_code,
             index,
             header_code,
             simple_ts_builder(&handlers)

@@ -8,7 +8,7 @@ afast = { path = "../afast" }
 tokio = { version = "1", features = ["full"] }
 
 [features]
-default = ["http", "doc", "js", "ts"]
+default = ["http"]
 js = ["afast/js"]
 ts = ["afast/ts"]
 tcp = ["afast/tcp"]

@@ -275,7 +275,7 @@ where
     #[cfg(feature = "code")]
     codes: std::collections::HashMap<String, String>,
 
-    services: std::collections::HashSet<String>,
+    services: std::collections::HashSet<(String, String, usize)>,
 
     /// Includs JS util
     #[cfg(feature = "js")]
@@ -330,17 +330,18 @@ where
     }
 
     /// Register a service with additional handlers
-    pub fn service(mut self, name: &str, handlers: Vec<HandlerGeneric<T, H>>) -> Self {
+    pub fn service(mut self, name: &str, desc: &str, handlers: Vec<HandlerGeneric<T, H>>) -> Self {
         if handlers.is_empty() {
             println!("No handlers found for service {}", name);
             return self;
         }
 
-        if self.services.contains(name) {
+        if self.services.iter().any(|s| s.0 == name) {
             panic!("Service {} already registered", name);
         }
 
-        self.services.insert(name.to_string());
+        self.services
+            .insert((name.to_string(), desc.to_string(), handlers.len()));
 
         #[cfg(feature = "js")]
         self.codes.insert(
@@ -716,13 +717,16 @@ where
                 "/doc",
                 axum::routing::get(
                     move |axum::Extension(services): axum::Extension<
-                        std::collections::HashSet<String>,
+                        std::collections::HashSet<(String, String, usize)>,
                     >| async move {
                         let code = format!(
                             r#"{{"services":[{}]}}"#,
                             services
                                 .iter()
-                                .map(|s| format!("\"{}\"", s))
+                                .map(|(n, d, c)| format!(
+                                    r#"{{"name":"{}","desc":"{}","count":{}}}"#,
+                                    n, d, c
+                                ))
                                 .collect::<Vec<String>>()
                                 .join(",")
                         );
@@ -770,10 +774,33 @@ where
                     },
                 ),
             );
+
             #[cfg(feature = "doc")]
-            let app = app
-                .route_service("/{*afast}", tower_http::services::ServeDir::new("example/dist/"))
-                .fallback_service(tower_http::services::ServeFile::new("example/dist/index.html"));
+            static DIST_DIR: include_dir::Dir =
+                include_dir::include_dir!("$CARGO_MANIFEST_DIR/dist");
+            #[cfg(feature = "doc")]
+            let app = app.fallback(|uri: axum::http::Uri| async move {
+                let path = uri.path().trim_start_matches('/').trim();
+                let path = if path.is_empty() { "index.html" } else { path };
+
+                let file = DIST_DIR
+                    .get_file(path)
+                    .or_else(|| DIST_DIR.get_file("index.html"));
+
+                if let Some(file) = file {
+                    let mime = mime_guess::from_path(path).first_or_octet_stream();
+                    axum::response::Response::builder()
+                        .status(axum::http::StatusCode::OK)
+                        .header("Content-Type", mime.as_ref())
+                        .body(http_body_util::Full::from(file.contents()))
+                        .unwrap()
+                } else {
+                    axum::response::Response::builder()
+                        .status(axum::http::StatusCode::NOT_FOUND)
+                        .body(http_body_util::Full::from("404 Not Found"))
+                        .unwrap()
+                }
+            });
 
             // Attach shared state and CORS
             let app = app.layer(axum::Extension((state, handlers)));
@@ -836,5 +863,6 @@ pub enum Kind {
     Vec(Box<Kind>),
     Enum { variants: Vec<Kind> },
     Struct { fields: Vec<Field> },
+    Tuple(Vec<Kind>),
     Nullable(Box<Kind>),
 }

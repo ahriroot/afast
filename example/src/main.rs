@@ -4,6 +4,8 @@ use afast::{AFast, AFastData, AFastKind, Error, Field, Kind, Tag, handler, regis
 
 #[derive(Debug, Clone, AFastData, AFastKind)]
 enum Sex {
+    Other,
+    Custom(i32, String),
     Male { id: i64 },
     Female { name: String },
 }
@@ -91,8 +93,11 @@ struct Header {
 async fn main() {
     let state = Arc::new(Mutex::new("".to_string()));
 
-    let server =
-        AFast::<Mutex<String>, Header>::new(state).service("user", register! { get_user, get_id });
+    let server = AFast::<Mutex<String>, Header>::new(state).service(
+        "user",
+        "User service",
+        register! { get_user, get_id },
+    );
 
     server
         .serve(

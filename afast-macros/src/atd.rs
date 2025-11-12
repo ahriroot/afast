@@ -4,7 +4,39 @@ use syn::{
     FnArg, ItemFn, LitStr, Meta, Pat, PatType, parse_macro_input, punctuated::Punctuated, token,
 };
 
-/// Attribute macro to convert an async function into a generic binary handler.
+/// Attribute macro that converts an asynchronous Rust function into a fully-featured
+/// AFast handler with automatic support for:
+/// - Binary serialization/deserialization
+/// - Input validation
+/// - Middleware execution
+/// - JavaScript/TypeScript/Kotlin/Java client generation, etc.
+/// - API documentation
+///
+/// # Usage
+///
+/// ```rust
+/// #[handler(desc("Get user information"), ns("api.user"), mw("auth"))]
+/// async fn get_user(
+///     state: Arc<Mutex<String>>,
+///     header: Header,
+///     req: Request,
+/// ) -> Result<Response, Error> {
+///     Ok(Response { ... })
+/// }
+/// ```
+///
+/// The macro generates:
+/// 1. An internal async function preserving the original logic (`__inner_*`)
+/// 2. A wrapper function returning:
+///    - Middleware executor
+///    - Namespaced handler identifiers
+///    - Binary request/response handlers
+///
+/// # Macro Attributes
+///
+/// - `desc("...")` — API description for documentation and client generation
+/// - `ns("...")` — Namespace path for nested client generation (dot-separated)
+/// - `mw("...")` — Middleware chain (comma-separated function names)
 pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as ItemFn);
 
@@ -13,7 +45,7 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
     let block = &input.block;
     let sig = &input.sig;
 
-    // 提取原始函数的参数名和类型
+    // Extract parameter types: state, header, request
     let mut params = Vec::new();
     let mut state_ty = None;
     let mut header_ty = None;
@@ -23,7 +55,7 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
         if let FnArg::Typed(PatType { pat, ty, .. }) = arg {
             let param_name = match &**pat {
                 Pat::Ident(ident) => &ident.ident,
-                _ => panic!("Expected identifier pattern"),
+                _ => panic!("Expected identifier pattern for function parameters"),
             };
 
             params.push((param_name, ty.clone()));
@@ -37,21 +69,20 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
         }
     }
 
-    let state_ty = state_ty.expect("expected state parameter");
-    let header_ty = header_ty.expect("expected header parameter");
-    let req_ty = req_ty.expect("expected request parameter");
+    let state_ty = state_ty.expect("Expected first parameter to be state");
+    let header_ty = header_ty.expect("Expected second parameter to be header");
+    let req_ty = req_ty.expect("Expected third parameter to be request");
 
-    // 使用原始参数名重构 inner_ident 函数
+    // Generate internal function name to preserve original logic
     let inner_ident = syn::Ident::new(&format!("__inner_{}", ident), ident.span());
 
-    // 构建参数列表，保持原始参数名
+    // Build parameter token streams for the internal function
     let inner_params: Vec<_> = params
         .iter()
-        .map(|(name, ty)| {
-            quote! { #name: #ty }
-        })
+        .map(|(name, ty)| quote! { #name: #ty })
         .collect();
 
+    // Determine return type of the original function
     let ret_type = match &sig.output {
         syn::ReturnType::Type(_, ty) => (**ty).clone(),
         syn::ReturnType::Default => syn::parse_quote!(()),
@@ -67,19 +98,19 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
                             if let Some(syn::GenericArgument::Type(resp_ty)) = args.args.first() {
                                 resp_ty.clone()
                             } else {
-                                panic!("Result must have Ok type");
+                                panic!("Result must specify Ok type")
                             }
                         } else {
-                            panic!("Result must have angle brackets");
+                            panic!("Result must use angle brackets")
                         }
                     } else {
-                        panic!("Return type must be Result<Resp, Error>");
+                        panic!("Handler return type must be Result<Resp, Error>")
                     }
                 } else {
-                    panic!("Return type path empty");
+                    panic!("Return type path is empty")
                 }
             } else {
-                panic!("Return type must be a type path");
+                panic!("Handler return type must be a type path")
             }
         }
         syn::ReturnType::Default => panic!("Handler must return Result<Resp, Error>"),
@@ -92,9 +123,7 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut desc = String::new();
     let mut mw = quote! {
         Box::new(|state: #state_ty, header: #header_ty| {
-            Box::pin(async move {
-                Ok(())
-            })
+            Box::pin(async move { Ok(()) })
         })
     };
     let mut namespace: Vec<String> = Vec::new();
@@ -128,7 +157,7 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
                     if let Ok(lit) = meta.parse_args::<LitStr>() {
                         namespace = lit
                             .value()
-                            .split(".")
+                            .split('.')
                             .map(|s| s.trim().to_string())
                             .collect();
                     }
@@ -207,7 +236,11 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     #[cfg(feature = "doc")]
     {
-        let ns = namespace.iter().map(|s| format!("\"{}\"", s)).collect::<Vec<_>>().join(",");
+        let ns = namespace
+            .iter()
+            .map(|s| format!("\"{}\"", s))
+            .collect::<Vec<_>>()
+            .join(",");
         wrapper_args.push(quote! { String });
         wrapper_returns.push(quote! {
             {
@@ -237,9 +270,7 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
             > + Send + Sync + 'static,
         >
     });
-    wrapper_args.push(quote! {
-        Vec<String>
-    });
+    wrapper_args.push(quote! { Vec<String> });
     wrapper_args.push(quote! {
         Box<
             dyn Fn(
@@ -272,12 +303,12 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
     });
 
     let expanded = quote! {
-        /// The inner async function preserving the original user logic and parameter names.
+        /// Internal async function preserving the original user logic.
         #vis async fn #inner_ident(#(#inner_params),*) -> #ret_type {
             #block
         }
 
-        /// Returns a boxed handler suitable for AFast registration.
+        /// Generates a wrapper suitable for AFast handler registration.
         #vis fn #ident(id: u32) -> (#( #wrapper_args ),*) {
             (#( #wrapper_returns ),*)
         }
@@ -286,7 +317,17 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
-/// Macro to register multiple handlers.
+/// Macro to register multiple handlers at once.
+///
+/// # Usage
+///
+/// ```rust
+/// let handlers = register!{get_user, get_id};
+/// ```
+///
+/// Each function in the list must be annotated with `#[handler]`.
+/// The macro returns a `Vec<afast::HandlerGeneric>` with automatically
+/// assigned IDs and all wrapper components needed for AFast server registration.
 pub fn register(input: TokenStream) -> TokenStream {
     let funcs: syn::punctuated::Punctuated<syn::Ident, syn::token::Comma> =
         parse_macro_input!(input with syn::punctuated::Punctuated::parse_terminated);

@@ -91,8 +91,11 @@ struct Header {
 async fn main() {
     let state = Arc::new(Mutex::new("".to_string()));
 
-    let server =
-        AFast::<Mutex<String>, Header>::new(state).service("user", register! { get_user, get_id });
+    let server = AFast::<Mutex<String>, Header>::new(state).service(
+        "user",
+        "",
+        register! { get_user, get_id },
+    );
 
     server
         .serve(

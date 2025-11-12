@@ -67,6 +67,20 @@ impl Kind {
                     format!(r#""kind":"object","fields":[{}]"#, fields_doc.join(",")),
                 )
             }
+            Kind::Tuple(elements) => {
+                let items_doc = elements
+                    .iter()
+                    .enumerate()
+                    .map(|(i, k)| {
+                        let (_, inner_doc) = k.gen_doc_inner();
+                        format!(r#"{{"index":{},"item":{{{}}}}}"#, i, inner_doc)
+                    })
+                    .collect::<Vec<_>>();
+                (
+                    false,
+                    format!(r#""kind":"tuple","items":[{}]"#, items_doc.join(",")),
+                )
+            }
             Kind::Nullable(kind) => {
                 let (_, inner_doc) = kind.gen_doc_inner();
                 (true, inner_doc)
