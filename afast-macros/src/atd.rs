@@ -172,6 +172,7 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     #[cfg(feature = "js")]
     {
+        let has_namespace = !namespace.is_empty();
         wrapper_args.push(quote! { String });
         wrapper_returns.push(quote! {
             {
@@ -182,17 +183,17 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
                 let code_request_type = kind_request.gen_js_type();
                 let code_resposne_type = kind_response.gen_js_type();
                 js.push(format!("/**\n{} * @param {{{}}} request\n * @returns {{{}}}\n */\n", desc, code_request_type, code_resposne_type));
-                js.push(format!("{}: async (request) => {{", #func_name));
+                js.push(format!("{}{}async(request)=>{{", #func_name, if #has_namespace{":"}else{"="}));
                 let code = kind_request.gen_js_validate("request", None, 0).to_string();
                 js.push(code);
-                js.push("const _b1 = new AFastByteBuffer();".to_string());
-                js.push("const _header = await this._header();".to_string());
+                js.push("const _b1=new AFastByteBuffer();".to_string());
+                js.push("const _header=await this._header();".to_string());
                 let code = #header_ty::kind().gen_js_to_bytes("_header", 0);
                 js.push(code);
                 js.push(format!("_b1.pU32({}+this.offset);", id));
                 let code = kind_request.gen_js_to_bytes("request", 0);
                 js.push(code);
-                js.push("const _b2 = new AFastByteReader(await this._call(_b1.tU8A()));".to_string());
+                js.push("const _b2=new AFastByteReader(await this._call(_b1.tU8A()));".to_string());
                 js.push("_b2.rI32();".to_string());
                 let code = #resp_ty::field("response").gen_bytes_to_js(0);
                 js.push(code);
@@ -204,6 +205,7 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     #[cfg(feature = "ts")]
     {
+        let has_namespace = !namespace.is_empty();
         wrapper_args.push(quote! { String });
         wrapper_returns.push(quote! {
             {
@@ -214,17 +216,17 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
                 let code_request_type = kind_request.gen_ts_type();
                 let code_resposne_type = kind_response.gen_ts_type();
                 ts.push(format!("/**\n{} * @param {{{}}} request\n * @returns {{{}}}\n */\n", desc, code_request_type, code_resposne_type));
-                ts.push(format!("{}: async (request:{}): Promise<{}> => {{", #func_name, code_request_type, code_resposne_type));
+                ts.push(format!("{}{}async(request:{}):Promise<{}>=>{{", #func_name, if #has_namespace{":"}else{"="}, code_request_type, code_resposne_type));
                 let code = kind_request.gen_ts_validate("request", None, 0).to_string();
                 ts.push(code);
-                ts.push("const _b1 = new AFastByteBuffer();".to_string());
-                ts.push("const _header = await this._header();".to_string());
+                ts.push("const _b1=new AFastByteBuffer();".to_string());
+                ts.push("const _header=await this._header();".to_string());
                 let code = #header_ty::kind().gen_ts_to_bytes("_header", 0);
                 ts.push(code);
                 ts.push(format!("_b1.pU32({}+this.offset);", id));
                 let code = kind_request.gen_ts_to_bytes("request", 0).to_string();
                 ts.push(code);
-                ts.push("const _b2 = new AFastByteReader(await this._call(_b1.tU8A()));".to_string());
+                ts.push("const _b2=new AFastByteReader(await this._call(_b1.tU8A()));".to_string());
                 ts.push("_b2.rI32();".to_string());
                 let code = #resp_ty::field("response").gen_bytes_to_ts(0);
                 ts.push(code);

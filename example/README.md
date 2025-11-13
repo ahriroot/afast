@@ -51,7 +51,7 @@ The `#[handler]` attribute macro transforms async functions into full-featured A
 
 ```rust
 #[handler(desc("Get user information"), ns("api.v1.user"), mws("auth"))]
-async fn get_user(state: Arc<Mutex<String>>, header: Header, req: Request) -> Result<Response, Error> {
+async fn get_user(state: String, header: Header, req: Request) -> Result<Response, Error> {
     // Your business logic
 }
 ```
@@ -81,8 +81,6 @@ async fn get_user(state: Arc<Mutex<String>>, header: Header, req: Request) -> Re
 ## Example
 
 ```rust
-use std::sync::{Arc, Mutex};
-
 use afast::{AFast, AFastData, AFastKind, Error, Field, Kind, Tag, handler, register};
 
 #[derive(Debug, Clone, AFastData, AFastKind)]
@@ -141,7 +139,7 @@ pub struct Response {
 
 #[handler(desc("Get user information"), ns("api.user"))]
 async fn get_user(
-    _state: Arc<Mutex<String>>,
+    _state: String,
     _header: Header,
     req: Request,
 ) -> Result<Response, Error> {
@@ -156,7 +154,7 @@ async fn get_user(
     })
 }
 
-async fn auth(_state: Arc<Mutex<String>>, header: Header) -> Result<(), Error> {
+async fn auth(_state: String, header: Header) -> Result<(), Error> {
     println!("Token: {:?}", header);
     Ok(())
 }
@@ -173,7 +171,7 @@ struct Resp2 {
 }
 
 #[handler(desc("Get user by id"), mw("auth"), ns("api"))]
-async fn get_id(_state: Arc<Mutex<String>>, _header: Header, req: Req2) -> Result<Resp2, Error> {
+async fn get_id(_state: String, _header: Header, req: Req2) -> Result<Resp2, Error> {
     Ok(Resp2 {
         id: req.id,
         name: "John".to_string(),
@@ -187,9 +185,9 @@ struct Header {
 
 #[tokio::main]
 async fn main() {
-    let state = Arc::new(Mutex::new("".to_string()));
+    let state = "".to_string();
 
-    let server = AFast::<Mutex<String>, Header>::new(state).service(
+    let server = AFast::<String, Header>::new(state).service(
         "user",
         "User service",
         register! { get_user, get_id },

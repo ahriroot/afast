@@ -292,16 +292,6 @@ impl Kind {
     pub fn gen_js_validate(&self, name: &str, tag: Option<&Tag>, depth: usize) -> String {
         let mut validations = Vec::new();
 
-        // 通用验证规则（只有在有tag时才应用）
-        if let Some(tag) = tag {
-            if let Some(ref required_msg) = tag.required {
-                validations.push(format!(
-                    "if({0}===undefined||{0}===null) throw new AFastValidateError({1:?});",
-                    name, required_msg
-                ));
-            }
-        }
-
         // 类型特定的验证规则
         match self {
             Kind::I8
@@ -317,6 +307,12 @@ impl Kind {
             | Kind::F32
             | Kind::F64 => {
                 if let Some(tag) = tag {
+                    if let Some(ref required_msg) = tag.required {
+                        validations.push(format!(
+                            "if({0}===undefined||{0}===null||{0}===NaN||{0}===0) throw new AFastValidateError({1:?});",
+                            name, required_msg
+                        ));
+                    }
                     if let Some((min_val, min_msg)) = &tag.min {
                         validations.push(format!(
                             "if({0}<{1})throw new AFastValidateError({2:?});",
@@ -333,6 +329,12 @@ impl Kind {
             }
             Kind::String => {
                 if let Some(tag) = tag {
+                    if let Some(ref required_msg) = tag.required {
+                        validations.push(format!(
+                            "if({0}===undefined||{0}===null||{0}==='') throw new AFastValidateError({1:?});",
+                            name, required_msg
+                        ));
+                    }
                     if let Some((min_val, min_msg)) = &tag.min {
                         validations.push(format!(
                             "if({0}.length<{1})throw new AFastValidateError({2:?});",
@@ -349,6 +351,12 @@ impl Kind {
             }
             Kind::Vec(inner_kind) => {
                 if let Some(tag) = tag {
+                    if let Some(ref required_msg) = tag.required {
+                        validations.push(format!(
+                            "if({0}===undefined||{0}===null||{0}.length===0) throw new AFastValidateError({1:?});",
+                            name, required_msg
+                        ));
+                    }
                     if let Some((min_val, min_msg)) = &tag.min {
                         validations.push(format!(
                             "if({0}.length<{1})throw new AFastValidateError({2:?});",
@@ -466,7 +474,7 @@ impl Kind {
 
 pub fn simple_js_builder<T, H>(handlers: &Vec<HandlerGeneric<T, H>>) -> String
 where
-    T: Send + Sync + 'static,
+    T: Clone + Send + Sync + 'static,
     H: AFastKind + AFastData,
 {
     // Group handlers by namespace
@@ -560,7 +568,7 @@ fn build_js_object(
 
 pub fn gen_js_code<T, H>(util: bool, index: usize, handlers: &Vec<HandlerGeneric<T, H>>) -> String
 where
-    T: Send + Sync + 'static,
+    T: Clone + Send + Sync + 'static,
     H: AFastKind + AFastData,
 {
     if util {

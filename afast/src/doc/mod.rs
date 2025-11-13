@@ -122,7 +122,7 @@ impl Kind {
 
 pub fn gen_doc<T, H>(_index: usize, handlers: &Vec<HandlerGeneric<T, H>>) -> String
 where
-    T: Send + Sync + 'static,
+    T: Clone + Send + Sync + 'static,
     H: AFastKind + AFastData,
 {
     format!(

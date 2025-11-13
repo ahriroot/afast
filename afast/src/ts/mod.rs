@@ -482,7 +482,7 @@ impl Kind {
 
 pub fn simple_ts_builder<T, H>(handlers: &Vec<HandlerGeneric<T, H>>) -> String
 where
-    T: Send + Sync + 'static,
+    T: Clone + Send + Sync + 'static,
     H: AFastKind + AFastData,
 {
     // Group handlers by namespace
@@ -577,7 +577,7 @@ fn build_ts_object(
 
 pub fn gen_ts_code<T, H>(util: bool, index: usize, handlers: &Vec<HandlerGeneric<T, H>>) -> String
 where
-    T: Send + Sync + 'static,
+    T: Clone + Send + Sync + 'static,
     H: AFastKind + AFastData,
 {
     if util {

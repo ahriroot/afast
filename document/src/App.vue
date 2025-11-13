@@ -8,7 +8,7 @@ hljs.registerLanguage('json', json)
 
 <template>
     <NConfigProvider :hljs="hljs" :theme="darkTheme">
-        <NMessageProvider>
+        <NMessageProvider keep-alive-on-hover>
             <div class="app">
                 <router-view />
             </div>

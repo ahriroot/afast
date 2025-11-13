@@ -1,16 +1,16 @@
 //! # AFast
-//! 
+//!
 //! **AFast** is a high-performance asynchronous Rust backend framework designed
 //! to simplify building networked applications. It supports multiple protocols
 //! via feature flags and provides automatic code generation for clients
 //! (TypeScript and JavaScript), API documentation, and field validation.
-//! 
+//!
 //! ## Instructions
-//! 
+//!
 //! ### Supported Protocol Features
-//! 
+//!
 //! You can enable the following features in your `Cargo.toml`:
-//! 
+//!
 //! - `http` - enable HTTP support
 //!   - `/` - Document path (feature flag `doc`)
 //!   - `/api` - HTTP API endpoints
@@ -24,18 +24,18 @@
 //! - `js` - enable JavaScript client generation (auto enabled `code`)
 //! - `ts` - enable TypeScript client generation (auto enabled `code`)
 //! - `code` - enable code generation
-//! 
+//!
 //! **Note on TCP usage:**  
-//! 
+//!
 //! If the `tcp` feature is enabled, the `AFast::serve` method takes two arguments:
-//! 
+//!
 //! 1. The TCP address to listen on (`"127.0.0.1:8080"`).  
 //! 2. The HTTP/WS address (`"127.0.0.1:8081"`) for web clients and generated JS/TS clients.
-//! 
+//!
 //! This allows you to run TCP and HTTP/WS servers simultaneously in the same application.
-//! 
+//!
 //! ### Key Features
-//! 
+//!
 //! - **`handler` Macro**: Declare HTTP endpoints with minimal boilerplate
 //!   - Automatic TypeScript/JavaScript client generation
 //!   - Namespace support for organized API structure (`ns("api.v1.user")`)
@@ -44,47 +44,47 @@
 //! - Automatic field validation with custom rules
 //! - Async handler functions with state management
 //! - Flexible multi-protocol support: HTTP, WS, TCP
-//! 
+//!
 //! #### Handler Macro Overview
-//! 
+//!
 //! The `#[handler]` attribute macro transforms async functions into full-featured API endpoints:
-//! 
+//!
 //! ```rust
 //! #[handler(desc("Get user information"), ns("api.v1.user"), mws("auth"))]
 //! async fn get_user(state: Arc<Mutex<String>>, header: Header, req: Request) -> Result<Response, Error> {
 //!     // Your business logic
 //! }
 //! ```
-//! 
+//!
 //! **Macro Parameters:**
-//! 
+//!
 //! - `desc("description")` - API description for documentation
 //! - `ns("api.v1.user")` - Namespace for nested JS client generation
 //! - `mws("auth,validation")` - Middleware chain for pre-processing
-//! 
+//!
 //! **Generated Output:**
-//! 
+//!
 //! - Type-safe HTTP endpoints
 //! - Nested JavaScript client structure
 //! - TypeScript type definitions  
 //! - OpenAPI documentation
-//! 
+//!
 //! ### Upcoming Features / Development Plan
-//! 
+//!
 //! - Nested structure validation for complex types
 //! - Enable or disable js / ts / document by feature flags
 //! - Add command for generating client code
 //! - Generate client code for additional languages: Java, Kotlin, C#, Rust, etc.
 //! - Improved code generation templates for easier integration
 //! - Enhanced error handling and validation reporting
-//! 
+//!
 //! ## Example
-//! 
+//!
 //! ```rust
 //! use std::sync::{Arc, Mutex};
-//! 
+//!
 //! use afast::{AFast, AFastData, AFastKind, Error, Field, Kind, Tag, handler, register};
-//! 
+//!
 //! #[derive(Debug, Clone, AFastData, AFastKind)]
 //! enum Sex {
 //!     Other,
@@ -98,7 +98,7 @@
 //!         name: String,
 //!     },
 //! }
-//! 
+//!
 //! #[derive(Debug, Clone, AFastData, AFastKind)]
 //! struct Request {
 //!     #[validate(desc("User ID"))]
@@ -121,13 +121,13 @@
 //!     #[validate(desc("User sex"))]
 //!     sex: Sex,
 //! }
-//! 
+//!
 //! #[derive(Debug, Clone, AFastData, AFastKind)]
 //! struct Hobby {
 //!     id: i64,
 //!     name: String,
 //! }
-//! 
+//!
 //! #[derive(Debug, AFastData, AFastKind)]
 //! pub struct Response {
 //!     sex: Sex,
@@ -138,7 +138,7 @@
 //!     tags: Vec<String>,
 //!     gender: Option<bool>,
 //! }
-//! 
+//!
 //! #[handler(desc("Get user information"), ns("api.user"))]
 //! async fn get_user(
 //!     _state: Arc<Mutex<String>>,
@@ -155,23 +155,23 @@
 //!         sex: req.sex.clone(),
 //!     })
 //! }
-//! 
+//!
 //! async fn auth(_state: Arc<Mutex<String>>, header: Header) -> Result<(), Error> {
 //!     println!("Token: {:?}", header);
 //!     Ok(())
 //! }
-//! 
+//!
 //! #[derive(Debug, AFastData, AFastKind)]
 //! struct Req2 {
 //!     id: i64,
 //! }
-//! 
+//!
 //! #[derive(Debug, AFastData, AFastKind)]
 //! struct Resp2 {
 //!     id: i64,
 //!     name: String,
 //! }
-//! 
+//!
 //! #[handler(desc("Get user by id"), mw("auth"), ns("api"))]
 //! async fn get_id(_state: Arc<Mutex<String>>, _header: Header, req: Req2) -> Result<Resp2, Error> {
 //!     Ok(Resp2 {
@@ -179,22 +179,22 @@
 //!         name: "John".to_string(),
 //!     })
 //! }
-//! 
+//!
 //! #[derive(Debug, Clone, AFastData, AFastKind)]
 //! struct Header {
 //!     id: u32,
 //! }
-//! 
+//!
 //! #[tokio::main]
 //! async fn main() {
 //!     let state = Arc::new(Mutex::new("".to_string()));
-//! 
+//!
 //!     let server = AFast::<Mutex<String>, Header>::new(state).service(
 //!         "user",
 //!         "User service",
 //!         register! { get_user, get_id },
 //!     );
-//! 
+//!
 //!     server
 //!         .serve(
 //!             #[cfg(feature = "tcp")]
@@ -206,7 +206,7 @@
 //!         .unwrap();
 //! }
 //! ```
-//! 
+//!
 
 use std::sync::Arc;
 
@@ -233,7 +233,7 @@ pub trait AFastData: Sized {
 /// Each handler receives shared state `Arc<T>` and a binary request slice `&[u8]`,
 /// and returns a Future that resolves to a binary response `Vec<u8>` or an `Error`.
 pub type Handler<T, H> = dyn Fn(
-        Arc<T>,
+        T,
         H,
         &[u8],
     ) -> std::pin::Pin<
@@ -242,7 +242,7 @@ pub type Handler<T, H> = dyn Fn(
     + Sync;
 
 pub type Middleware<T, H> = dyn Fn(
-        Arc<T>,
+        T,
         H,
     )
         -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), Error>> + Send + 'static>>
@@ -254,7 +254,7 @@ pub type Middleware<T, H> = dyn Fn(
 /// Contains a handler ID, name, JS request code, TS request code, and the processing function.
 pub struct HandlerGeneric<T, H>
 where
-    T: Send + Sync + 'static,
+    T: Clone + Send + Sync + 'static,
     H: AFastKind + AFastData,
 {
     /// Unique handler ID
@@ -287,11 +287,11 @@ where
 /// Maintains shared state and registered handlers.
 pub struct AFast<T, H>
 where
-    T: Send + Sync + 'static,
+    T: Clone + Send + Sync + 'static,
     H: AFastKind + AFastData + Clone + Send + Sync + 'static,
 {
     /// Shared application state
-    state: Arc<T>,
+    state: T,
     /// Registered handler list
     handlers: Arc<Vec<HandlerGeneric<T, H>>>,
 
@@ -312,7 +312,7 @@ where
 
 impl<T, H> AFast<T, H>
 where
-    T: Send + Sync + 'static,
+    T: Clone + Send + Sync + 'static,
     H: AFastKind + AFastData + Clone + Send + Sync + 'static,
 {
     /// Create a new AFast service instance
@@ -323,7 +323,7 @@ where
     ///
     /// # Returns
     /// A new AFast instance
-    pub fn new(state: Arc<T>) -> Self {
+    pub fn new(state: T) -> Self {
         Self {
             state,
             handlers: Arc::new(vec![]),
@@ -364,7 +364,8 @@ where
             panic!("Service {} already registered", name);
         }
 
-        self.services.insert((name.to_string(), desc.to_string(), handlers.len()));
+        self.services
+            .insert((name.to_string(), desc.to_string(), handlers.len()));
 
         #[cfg(feature = "js")]
         self.codes.insert(
@@ -459,14 +460,14 @@ where
                         // Call handler
                         let handler = &handlers[id];
 
-                        let fut = (handler.middleware)(Arc::clone(&state), header.clone());
+                        let fut = (handler.middleware)(state.clone(), header.clone());
                         match fut.await {
                             Ok(_) => {}
                             Err(_) => {
                                 continue;
                             }
                         }
-                        let fut = (handler.func)(Arc::clone(&state), header, &body[size + 8..]);
+                        let fut = (handler.func)(state.clone(), header, &body[size + 8..]);
                         let res = fut.await.unwrap();
 
                         // Build response: len + seq + id + response
@@ -524,14 +525,14 @@ where
                     // Call handler
                     let handler = &handlers[id];
 
-                    let fut = (handler.middleware)(Arc::clone(&state), header.clone());
+                    let fut = (handler.middleware)(state.clone(), header.clone());
                     match fut.await {
                         Ok(_) => {}
                         Err(_) => {
                             continue;
                         }
                     }
-                    let fut = (handler.func)(Arc::clone(&state), header, &body[size + 8..]);
+                    let fut = (handler.func)(state.clone(), header, &body[size + 8..]);
                     let res = fut.await.unwrap();
 
                     let mut final_res = Vec::with_capacity(12 + res.len());
@@ -549,7 +550,7 @@ where
 
         #[cfg(any(feature = "http", feature = "ws"))]
         {
-            let state = Arc::clone(&self.state);
+            let state = self.state.clone();
             let handlers = Arc::clone(&self.handlers);
 
             // TCP listener for HTTP/WS
@@ -563,7 +564,7 @@ where
                 "/ws",
                 axum::routing::any(
                     move |axum::Extension((state, handlers)): axum::Extension<(
-                        Arc<T>,
+                        T,
                         Arc<Vec<HandlerGeneric<T, H>>>,
                     )>,
                           ws: axum::extract::ws::WebSocketUpgrade| async move {
@@ -599,7 +600,7 @@ where
                                     let handler = &handlers[id];
 
                                     let fut =
-                                        (handler.middleware)(Arc::clone(&state), header.clone());
+                                        (handler.middleware)(state.clone(), header.clone());
                                     match fut.await {
                                         Ok(_) => {}
                                         Err(_) => {
@@ -607,7 +608,7 @@ where
                                         }
                                     }
                                     let fut = (handler.func)(
-                                        Arc::clone(&state),
+                                        state.clone(),
                                         header,
                                         &body[size + 8..],
                                     );
@@ -632,7 +633,7 @@ where
                 "/api",
                 axum::routing::post(
                     move |axum::Extension((state, handlers)): axum::Extension<(
-                        Arc<T>,
+                        T,
                         Arc<Vec<HandlerGeneric<T, H>>>,
                     )>,
                           body: axum::body::Bytes| async move {
@@ -665,7 +666,7 @@ where
                         ]);
                         let handler = &handlers[id as usize];
 
-                        let fut = (handler.middleware)(Arc::clone(&state), header.clone());
+                        let fut = (handler.middleware)(state.clone(), header.clone());
                         match fut.await {
                             Ok(_) => {}
                             Err(e) => {
@@ -677,7 +678,7 @@ where
                                     .unwrap();
                             }
                         }
-                        let fut = (handler.func)(Arc::clone(&state), header, &body[size + 4..]);
+                        let fut = (handler.func)(state.clone(), header, &body[size + 4..]);
                         match fut.await {
                             Ok(res) => {
                                 let mut final_res = Vec::with_capacity(4 + res.len());
@@ -746,7 +747,10 @@ where
                             r#"{{"services":[{}]}}"#,
                             services
                                 .iter()
-                                .map(|(n, d, c)| format!(r#"{{"name":"{}","desc":"{}","count":{}}}"#, n, d, c))
+                                .map(|(n, d, c)| format!(
+                                    r#"{{"name":"{}","desc":"{}","count":{}}}"#,
+                                    n, d, c
+                                ))
                                 .collect::<Vec<String>>()
                                 .join(",")
                         );

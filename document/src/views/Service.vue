@@ -130,10 +130,10 @@ const submit = async (index: number) => {
                                     <NButton @click="submit(index)">Send</NButton>
                                 </NSpace>
                                 <NCard title="Request" v-if="i.preview">
-                                    <NCode :code="safeStringify(i.data)" :language="'json'" />
+                                    <NCode :code="safeStringify(i.data)" :language="'json'" word-wrap />
                                 </NCard>
                                 <NCard title="Response">
-                                    <NCode :code="safeStringify(i.resp)" :language="'json'" />
+                                    <NCode :code="safeStringify(i.resp)" :language="'json'" word-wrap />
                                 </NCard>
                             </NSpace>
                         </div>
