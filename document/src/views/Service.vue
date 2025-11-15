@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { onBeforeMount, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { NCode, NButton, NCollapse, NCollapseItem, NScrollbar, NSpace, useMessage, NCheckbox, NCard } from 'naive-ui'
+import { NCode, NInput, NButton, NCollapse, NCollapseItem, NScrollbar, NSpace, useMessage, NCheckbox, NCard, NInputGroup } from 'naive-ui'
 import hljs from 'highlight.js/lib/core'
 import json from 'highlight.js/lib/languages/json'
 import JsonEditor from '../components/JsonEditor.vue'
+import JsonView from '../components/JsonView.vue'
 import { generateDefault } from '../utils/default'
 
 hljs.registerLanguage('json', json)
@@ -36,14 +37,38 @@ async function loadModuleWithBlob(url: string): Promise<[any, any]> {
     }
 }
 
+const editAuthorization = ref(false)
+const authorization = ref(localStorage.getItem('authorization') || '')
+const handleEditAuthorization = (e: MouseEvent) => {
+    e.stopPropagation()
+    editAuthorization.value = true
+}
+const handleSaveAuthorization = (e: MouseEvent) => {
+    e.stopPropagation()
+    localStorage.setItem('authorization', authorization.value)
+    editAuthorization.value = false
+}
+
+const expandedNames = ref<number[]>([])
+const handleExpandedNames = (names: number[]) => {
+    localStorage.setItem('expandedNames', JSON.stringify(names))
+    expandedNames.value = names
+}
+
 onBeforeMount(async () => {
+    const names = localStorage.getItem('expandedNames')
+    if (names) {
+        try {
+            expandedNames.value = JSON.parse(names)
+        } catch (_) { }
+    }
     try {
         const svc = route.params.name
         const [AFastClient, AFastValidateError] = await loadModuleWithBlob(`${baseURL}/code/${svc}/js`)
         client.value = new AFastClient({
             header: async () => {
                 return {
-                    id: 1,
+                    token: authorization.value,
                 };
             },
             call: async (buf: Uint8Array): Promise<Uint8Array> => {
@@ -83,6 +108,7 @@ function safeStringify(obj: any) {
     return JSON.stringify(obj, null, 4);
 }
 
+const processings = ref<any>({})
 
 const submit = async (index: number) => {
     const { api, data } = services.value[index]
@@ -92,6 +118,7 @@ const submit = async (index: number) => {
     }
     if (fn && fn[api.name]) {
         try {
+            processings.value[index] = true
             const resp = await fn[api.name](data)
             services.value[index].resp = resp
         } catch (e: any) {
@@ -100,6 +127,8 @@ const submit = async (index: number) => {
             } else {
                 message.error(e.message || e.toString())
             }
+        } finally {
+            processings.value[index] = false
         }
     } else {
         message.error(`API ${api.name} not found`)
@@ -111,7 +140,7 @@ const submit = async (index: number) => {
     <div class="service">
         <NScrollbar>
             <div class="container">
-                <NCollapse>
+                <NCollapse :expanded-names="expandedNames" :on-update:expanded-names="handleExpandedNames">
                     <NCollapseItem v-for="(i, index) in services" :title="i.api.desc || '-'" :name="index">
                         <template #header>
                             <NSpace align="center">
@@ -120,20 +149,34 @@ const submit = async (index: number) => {
                             </NSpace>
                         </template>
                         <template #header-extra>
-                            123
+                            <NButton v-show="!editAuthorization" @click="handleEditAuthorization">Authorization
+                            </NButton>
+                            <NInputGroup v-show="editAuthorization">
+                                <NInput v-model:value="authorization" @click="(e) => e.stopPropagation()" />
+                                <NButton @click="handleSaveAuthorization">
+                                    Save
+                                </NButton>
+                            </NInputGroup>
                         </template>
                         <div class="api">
                             <NSpace vertical>
                                 <JsonEditor :schema="i.api.request" v-model:modelValue="i.data" />
                                 <NSpace align="center" justify="end">
-                                    <NCheckbox v-model:checked="i.preview" label="Preview" />
-                                    <NButton @click="submit(index)">Send</NButton>
+                                    <NCheckbox v-model:checked="i.preview" label="Preview Request" />
+                                    <NButton @click="submit(index)" :loading="processings[index]">Send</NButton>
                                 </NSpace>
                                 <NCard title="Request" v-if="i.preview">
                                     <NCode :code="safeStringify(i.data)" :language="'json'" word-wrap />
+                                    <NCard>
+                                        {{ i.api.req_type }}
+                                    </NCard>Z
                                 </NCard>
                                 <NCard title="Response">
                                     <NCode :code="safeStringify(i.resp)" :language="'json'" word-wrap />
+                                    <NCard>
+                                        {{ i.api.resp_type }}
+                                    </NCard>
+                                    <JsonView :schema="i.api.response" />
                                 </NCard>
                             </NSpace>
                         </div>
