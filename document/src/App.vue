@@ -2,8 +2,10 @@
 import { NConfigProvider, NMessageProvider, darkTheme, NGlobalStyle } from 'naive-ui'
 import hljs from 'highlight.js/lib/core'
 import json from 'highlight.js/lib/languages/json'
+import js from 'highlight.js/lib/languages/javascript'
 
 hljs.registerLanguage('json', json)
+hljs.registerLanguage('javascript', js)
 </script>
 
 <template>

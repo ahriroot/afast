@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onBeforeMount, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { NCard, NScrollbar, NSpace } from 'naive-ui'
+import { NButton, NCard, NModal, NScrollbar, NSpace, NTabs, NTabPane, NCode } from 'naive-ui'
 
 const baseURL = import.meta.env.VITE_BASE_URL
 const router = useRouter()
@@ -15,12 +15,88 @@ onBeforeMount(async () => {
 const handleToService = (svc: any) => {
     router.push({ name: 'Service', params: { name: svc.name } })
 }
+
+const showExample = ref(false)
+const jsCode = `import { AFastClient } from 'xxx';
+
+const client = new AFastClient({
+    header: async () => {
+        return {
+            token: () => { return localStorage.getItem('token') },
+        }
+    },
+    call: async (buf) => {
+        console.log(buf);
+        const response = await fetch('http://host/api', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/octet-stream',
+            },
+            body: buf,
+        });
+        if (!response.ok) {
+            const body = await response.text();
+            throw new Error(\`HTTP error: \${response.status} \${response.statusText} \${body}\`);
+        }
+        const data = await response.arrayBuffer();
+        return new Uint8Array(data);
+    },
+});
+
+const response = await client[.namespace1.namespace2].handle({});`
+const tsCode = `import { AFastClient } from 'xxx';
+
+const client = new AFastClient({
+    header: async () => {
+        return {
+            token: () => { return localStorage.getItem('token') },
+        }
+    },
+    call: async (buf) => {
+        console.log(buf);
+        const response = await fetch('http://host/api', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/octet-stream',
+            },
+            body: buf as any,
+        });
+        if (!response.ok) {
+            const body = await response.text();
+            throw new Error(\`HTTP error: \${response.status} \${response.statusText} \${body}\`);
+        }
+        const data = await response.arrayBuffer();
+        return new Uint8Array(data);
+    },
+});
+
+const response = await client[.namespace1.namespace2].handle({});`
 </script>
 
 <template>
     <div class="index">
         <NScrollbar>
             <div class="container">
+                <NModal :show="showExample" style="width: 900px;">
+                    <NCard>
+                        <h1>1: Get client code</h1>
+                        <p>http://host/code/{service}/{lang}</p>
+                        <p>example: http://host/code/service1/js</p>
+                        <h1>2: Create client</h1>
+                        <NTabs type="segment" animated>
+                            <NTabPane name="js" tab="js">
+                                <NCode :code="jsCode" :language="'javascript'" />
+                            </NTabPane>
+                            <NTabPane name="ts" tab="ts">
+                                <NCode :code="tsCode" :language="'javascript'" />
+                            </NTabPane>
+                        </NTabs>
+                    </NCard>
+                </NModal>
+                <NSpace justify="end">
+                    <NButton @click="showExample = true">Example</NButton>
+                </NSpace>
+                <br />
                 <div class="service" v-for="svc in services.services" @click="handleToService(svc)">
                     <NCard>
                         <NSpace align="center">

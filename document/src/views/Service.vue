@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onBeforeMount, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { NCode, NInput, NButton, NCollapse, NCollapseItem, NScrollbar, NSpace, useMessage, NCheckbox, NCard, NInputGroup } from 'naive-ui'
+import { NCode, NInput, NButton, NCollapse, NCollapseItem, NScrollbar, NSpace, useMessage, NCheckbox, NCard, NInputGroup, NModal, NTabs, NTabPane } from 'naive-ui'
 import hljs from 'highlight.js/lib/core'
 import json from 'highlight.js/lib/languages/json'
 import JsonEditor from '../components/JsonEditor.vue'
@@ -140,12 +140,93 @@ const submit = async (index: number) => {
         message.error(`API ${api.name} not found`)
     }
 }
+
+const showExample = ref(false)
+const jsCode = `import { AFastClient } from 'xxx';
+
+const client = new AFastClient({
+    header: async () => {
+        return {
+            token: () => { return localStorage.getItem('token') },
+        }
+    },
+    call: async (buf) => {
+        console.log(buf);
+        const response = await fetch('http://host/api', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/octet-stream',
+            },
+            body: buf,
+        });
+        if (!response.ok) {
+            const body = await response.text();
+            throw new Error(\`HTTP error: \${response.status} \${response.statusText} \${body}\`);
+        }
+        const data = await response.arrayBuffer();
+        return new Uint8Array(data);
+    },
+});
+
+const response = await client[.namespace1.namespace2].handle({});`
+const tsCode = `import { AFastClient } from 'xxx';
+
+const client = new AFastClient({
+    header: async () => {
+        return {
+            token: () => { return localStorage.getItem('token') },
+        }
+    },
+    call: async (buf) => {
+        console.log(buf);
+        const response = await fetch('http://host/api', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/octet-stream',
+            },
+            body: buf as any,
+        });
+        if (!response.ok) {
+            const body = await response.text();
+            throw new Error(\`HTTP error: \${response.status} \${response.statusText} \${body}\`);
+        }
+        const data = await response.arrayBuffer();
+        return new Uint8Array(data);
+    },
+});
+
+const response = await client[.namespace1.namespace2].handle({});`
 </script>
 
 <template>
     <div class="service">
         <NScrollbar>
             <div class="container">
+                <NModal :show="showExample" style="width: 900px;" preset="dialog">
+                    <h1>1: Get client code</h1>
+                    <p>http://host/code/{service}/{lang}</p>
+                    <p>example: http://host/code/service1/js</p>
+                    <h1>2: Create client</h1>
+                    <NTabs type="segment" animated>
+                        <NTabPane name="js" tab="js">
+                            <NCode :code="jsCode" :language="'javascript'" />
+                        </NTabPane>
+                        <NTabPane name="ts" tab="ts">
+                            <NCode :code="tsCode" :language="'javascript'" />
+                        </NTabPane>
+                    </NTabs>
+                </NModal>
+                <NSpace align="center" justify="end">
+                    <NButton @click="showExample = true">Example</NButton>
+                    <NButton v-show="!editAuthorization" @click="handleEditAuthorization">Authorization
+                    </NButton>
+                    <NInputGroup v-show="editAuthorization">
+                        <NInput v-model:value="authorization" @click="(e) => e.stopPropagation()" />
+                        <NButton @click="handleSaveAuthorization">
+                            Save
+                        </NButton>
+                    </NInputGroup>
+                </NSpace>
                 <NCollapse :expanded-names="expandedNames" :on-update:expanded-names="handleExpandedNames">
                     <NCollapseItem v-for="(i, index) in services" :title="i.api.desc || '-'" :name="index">
                         <template #header>
@@ -155,14 +236,7 @@ const submit = async (index: number) => {
                             </NSpace>
                         </template>
                         <template #header-extra>
-                            <NButton v-show="!editAuthorization" @click="handleEditAuthorization">Authorization
-                            </NButton>
-                            <NInputGroup v-show="editAuthorization">
-                                <NInput v-model:value="authorization" @click="(e) => e.stopPropagation()" />
-                                <NButton @click="handleSaveAuthorization">
-                                    Save
-                                </NButton>
-                            </NInputGroup>
+                            <span>Namespace: {{ i.api.ns || '[]' }}</span>
                         </template>
                         <div class="api">
                             <NSpace vertical>
