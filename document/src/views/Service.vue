@@ -51,7 +51,10 @@ const handleSaveAuthorization = (e: MouseEvent) => {
 
 const expandedNames = ref<number[]>([])
 const handleExpandedNames = (names: number[]) => {
-    localStorage.setItem('expandedNames', JSON.stringify(names))
+    localStorage.setItem('expandedNames', JSON.stringify({
+        name: route.params.name,
+        names: names,
+    }))
     expandedNames.value = names
 }
 
@@ -59,7 +62,10 @@ onBeforeMount(async () => {
     const names = localStorage.getItem('expandedNames')
     if (names) {
         try {
-            expandedNames.value = JSON.parse(names)
+            const res = JSON.parse(names)
+            if (res.name === route.params.name) {
+                expandedNames.value = res.names
+            }
         } catch (_) { }
     }
     try {

@@ -146,7 +146,7 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
                                 Box::pin(async move {
                                     match #ident(state, header).await {
                                         Ok(_) => Ok(()),
-                                        Err(e) => Err(afast::Error::server_error(500, e.to_string())),
+                                        Err(e) => Err(e),
                                     }
                                 })
                             })
@@ -249,15 +249,20 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
                 let mut doc: Vec<String> = Vec::new();
                 let kind_request = #req_ty::field("request");
                 let kind_response = #resp_ty::field("response");
+                let type_request = kind_request.gen_js_type();
+                let type_response = kind_response.gen_js_type();
                 let doc_request = kind_request.gen_doc();
                 let doc_response = kind_response.gen_doc();
                 format!(
-                    r#"{{"name":"{}","desc":"{}","ns":[{}],"request":{},"response":{}}}"#,
+                    r#"{{"name":"{}","desc":"{}","ns":[{}],"request":{},"response":{},"req_type":"{}","resp_type":"{}"}}"#,
                     #func_name,
                     #desc,
                     #ns,
                     doc_request,
-                    doc_response)
+                    doc_response,
+                    type_request,
+                    type_response
+                )
             }
         });
     }
@@ -292,13 +297,13 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
             Box::pin(async move {
                 match req {
                     Ok((req, _)) => {
-                        req.validate().map_err(|e| afast::Error::client_error(400, e.join(",")))?;
+                        req.validate().map_err(|e| afast::Error::custom_error(400, e.join(",")))?;
                         match #inner_ident(state, header, req).await {
                             Ok(resp) => Ok(resp.to_bytes()),
-                            Err(e) => Err(afast::Error::server_error(500, e.to_string())),
+                            Err(e) => Err(e),
                         }
                     },
-                    Err(e) => return Err(afast::Error::client_error(400, e.to_string())),
+                    Err(e) => return Err(e),
                 }
             })
         })

@@ -16,6 +16,7 @@ rust-version = "1.90"
 [dependencies]
 # afast-macros = { version = "0.0.6"}
 afast-macros = { path = "../afast-macros" }
+backtrace = { version = "0.3", optional = true }
 tokio = { version = "1.48", features = ["full"] }
 axum = { version = "0.8", optional = true }
 http-body-util = { version = "0.1", features = ["full"], optional = true }
@@ -32,3 +33,4 @@ code = ["afast-macros/code"]
 js = ["afast-macros/js", "code"]
 ts = ["afast-macros/ts", "code"]
 doc = ["afast-macros/doc", "code", "tower-http/fs", "include_dir", "mime_guess"]
+trace = ["backtrace"]

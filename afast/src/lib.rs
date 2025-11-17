@@ -599,19 +599,15 @@ where
 
                                     let handler = &handlers[id];
 
-                                    let fut =
-                                        (handler.middleware)(state.clone(), header.clone());
+                                    let fut = (handler.middleware)(state.clone(), header.clone());
                                     match fut.await {
                                         Ok(_) => {}
                                         Err(_) => {
                                             continue;
                                         }
                                     }
-                                    let fut = (handler.func)(
-                                        state.clone(),
-                                        header,
-                                        &body[size + 8..],
-                                    );
+                                    let fut =
+                                        (handler.func)(state.clone(), header, &body[size + 8..]);
                                     let res = fut.await.unwrap();
                                     let mut final_res = Vec::with_capacity(8 + res.len());
                                     final_res.extend_from_slice(&seq.to_be_bytes());
@@ -691,12 +687,21 @@ where
                                     )))
                                     .unwrap()
                             }
-                            Err(e) => axum::response::Response::builder()
-                                .status(400)
-                                .body(http_body_util::Full::new(axum::body::Bytes::from(
-                                    e.to_string(),
-                                )))
-                                .unwrap(),
+                            Err(e) => {
+                                let (c, m) = match e {
+                                    Error::DecodeError => (400, "Invalid request".to_string()),
+                                    Error::EncodeError => (500, "Invalid response".to_string()),
+                                    Error::ClientError => (400, "Bad request".to_string()),
+                                    Error::ServerError => {
+                                        (500, "Internal Server Error".to_string())
+                                    }
+                                    Error::CustomError(c, m) => (c, m.to_string()),
+                                };
+                                axum::response::Response::builder()
+                                    .status(c)
+                                    .body(http_body_util::Full::new(axum::body::Bytes::from(m)))
+                                    .unwrap()
+                            }
                         }
                     },
                 ),

@@ -90,6 +90,7 @@ pub fn handler_struct(
                                 });
                             }
                         }
+                        "bool" => {}
                         _ => {
                             valideate_code.push(quote! {
                                 self.#ident.validate()?;
