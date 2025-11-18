@@ -2,7 +2,7 @@ use proc_macro2::TokenStream as TS;
 use quote::quote;
 use syn::{Error, spanned::Spanned as _};
 
-use crate::{deserialize, parse_tags, serialize};
+use crate::{deserialize, parse_ignore, parse_tags, serialize};
 
 pub fn handler_struct(
     _name: &syn::Ident,
@@ -21,16 +21,22 @@ pub fn handler_struct(
                 let ty = &field.ty;
                 let typ = quote!(#ty).to_string();
                 let tag = parse_tags(&field.attrs)?;
-                serialize_code.push(serialize::gen_struct_code::gen_serialize_code(
-                    &ty,
-                    quote!(self.#ident),
-                    0,
-                ));
-                deserialize_code.push(deserialize::gen_struct_code::gen_deserialize_code(
-                    &ty,
-                    quote!(#ident),
-                    0,
-                ));
+                if parse_ignore(&field.attrs)? {
+                    deserialize_code.push(quote! {
+                        let #ident = #ty::default();
+                    });
+                } else {
+                    serialize_code.push(serialize::gen_struct_code::gen_serialize_code(
+                        &ty,
+                        quote!(self.#ident),
+                        0,
+                    ));
+                    deserialize_code.push(deserialize::gen_struct_code::gen_deserialize_code(
+                        &ty,
+                        quote!(#ident),
+                        0,
+                    ));
+                }
                 let typ = typ.replace(" ", "");
                 if typ.starts_with("Vec") {
                     if let Some(msg) = tag.required {
@@ -133,16 +139,22 @@ pub fn handler_enum(
                     let ty = &field.ty;
                     let typ = quote!(#ty).to_string();
                     let tag = parse_tags(&field.attrs)?;
-                    ser_fields.push(serialize::gen_struct_code::gen_serialize_code(
-                        &ty,
-                        quote!(#ident),
-                        0,
-                    ));
-                    deser_fields.push(deserialize::gen_struct_code::gen_deserialize_code(
-                        &ty,
-                        quote!(#ident),
-                        0,
-                    ));
+                    if parse_ignore(&field.attrs)? {
+                        deser_fields.push(quote! {
+                            let #ident = #ty::default();
+                        });
+                    } else {
+                        ser_fields.push(serialize::gen_struct_code::gen_serialize_code(
+                            &ty,
+                            quote!(#ident),
+                            0,
+                        ));
+                        deser_fields.push(deserialize::gen_struct_code::gen_deserialize_code(
+                            &ty,
+                            quote!(#ident),
+                            0,
+                        ));
+                    }
                     let typ = typ.replace(" ", "");
                     if typ.starts_with("Vec") {
                         if let Some(msg) = tag.required {
