@@ -1,16 +1,16 @@
 //! # AFast
-//!
+//! 
 //! **AFast** is a high-performance asynchronous Rust backend framework designed
 //! to simplify building networked applications. It supports multiple protocols
 //! via feature flags and provides automatic code generation for clients
 //! (TypeScript and JavaScript), API documentation, and field validation.
-//!
+//! 
 //! ## Instructions
-//!
+//! 
 //! ### Supported Protocol Features
-//!
+//! 
 //! You can enable the following features in your `Cargo.toml`:
-//!
+//! 
 //! - `http` - enable HTTP support
 //!   - `/` - Document path (feature flag `doc`)
 //!   - `/api` - HTTP API endpoints
@@ -24,67 +24,63 @@
 //! - `js` - enable JavaScript client generation (auto enabled `code`)
 //! - `ts` - enable TypeScript client generation (auto enabled `code`)
 //! - `code` - enable code generation
-//!
+//! 
 //! **Note on TCP usage:**  
-//!
+//! 
 //! If the `tcp` feature is enabled, the `AFast::serve` method takes two arguments:
-//!
+//! 
 //! 1. The TCP address to listen on (`"127.0.0.1:8080"`).  
 //! 2. The HTTP/WS address (`"127.0.0.1:8081"`) for web clients and generated JS/TS clients.
-//!
+//! 
 //! This allows you to run TCP and HTTP/WS servers simultaneously in the same application.
-//!
+//! 
 //! ### Key Features
-//!
+//! 
 //! - **`handler` Macro**: Declare HTTP endpoints with minimal boilerplate
 //!   - Automatic TypeScript/JavaScript client generation
 //!   - Namespace support for organized API structure (`ns("api.v1.user")`)
-//!   - Middleware chaining for authentication/validation (`mws("auth")`)
 //!   - Descriptive API documentation generation (`desc("Get user info")`)
 //! - Automatic field validation with custom rules
 //! - Async handler functions with state management
 //! - Flexible multi-protocol support: HTTP, WS, TCP
-//!
+//! 
 //! #### Handler Macro Overview
-//!
+//! 
 //! The `#[handler]` attribute macro transforms async functions into full-featured API endpoints:
-//!
+//! 
 //! ```rust
-//! #[handler(desc("Get user information"), ns("api.v1.user"), mws("auth"))]
-//! async fn get_user(state: Arc<Mutex<String>>, header: Header, req: Request) -> Result<Response, Error> {
+//! #[handler(desc("Get user information"), ns("api.v1.user"))]
+//! async fn get_user(state: String, header: Header, req: Request) -> Result<Response, Error> {
 //!     // Your business logic
 //! }
 //! ```
-//!
+//! 
 //! **Macro Parameters:**
-//!
+//! 
 //! - `desc("description")` - API description for documentation
 //! - `ns("api.v1.user")` - Namespace for nested JS client generation
-//! - `mws("auth,validation")` - Middleware chain for pre-processing
-//!
+//! 
 //! **Generated Output:**
-//!
+//! 
 //! - Type-safe HTTP endpoints
 //! - Nested JavaScript client structure
 //! - TypeScript type definitions  
 //! - OpenAPI documentation
-//!
+//! 
 //! ### Upcoming Features / Development Plan
-//!
+//! 
 //! - Nested structure validation for complex types
 //! - Enable or disable js / ts / document by feature flags
 //! - Add command for generating client code
 //! - Generate client code for additional languages: Java, Kotlin, C#, Rust, etc.
 //! - Improved code generation templates for easier integration
 //! - Enhanced error handling and validation reporting
-//!
+//! 
 //! ## Example
-//!
+//! 
 //! ```rust
-//! use std::sync::{Arc, Mutex};
-//!
-//! use afast::{AFast, AFastData, AFastKind, Error, Field, Kind, Tag, handler, register};
-//!
+//! use afast::{AFast, AFastData, AFastKind, Error, Field, Kind, Tag, handler, middleware, register};
+//! 
 //! #[derive(Debug, Clone, AFastData, AFastKind)]
 //! enum Sex {
 //!     Other,
@@ -98,7 +94,7 @@
 //!         name: String,
 //!     },
 //! }
-//!
+//! 
 //! #[derive(Debug, Clone, AFastData, AFastKind)]
 //! struct Request {
 //!     #[validate(desc("User ID"))]
@@ -121,13 +117,13 @@
 //!     #[validate(desc("User sex"))]
 //!     sex: Sex,
 //! }
-//!
+//! 
 //! #[derive(Debug, Clone, AFastData, AFastKind)]
 //! struct Hobby {
 //!     id: i64,
 //!     name: String,
 //! }
-//!
+//! 
 //! #[derive(Debug, AFastData, AFastKind)]
 //! pub struct Response {
 //!     sex: Sex,
@@ -138,13 +134,9 @@
 //!     tags: Vec<String>,
 //!     gender: Option<bool>,
 //! }
-//!
+//! 
 //! #[handler(desc("Get user information"), ns("api.user"))]
-//! async fn get_user(
-//!     _state: Arc<Mutex<String>>,
-//!     _header: Header,
-//!     req: Request,
-//! ) -> Result<Response, Error> {
+//! async fn get_user(_state: String, _header: Header, req: Request) -> Result<Response, Error> {
 //!     Ok(Response {
 //!         id: req.id,
 //!         name: req.name.clone(),
@@ -155,46 +147,45 @@
 //!         sex: req.sex.clone(),
 //!     })
 //! }
-//!
-//! async fn auth(_state: Arc<Mutex<String>>, header: Header) -> Result<(), Error> {
-//!     println!("Token: {:?}", header);
-//!     Ok(())
-//! }
-//!
+//! 
 //! #[derive(Debug, AFastData, AFastKind)]
 //! struct Req2 {
 //!     id: i64,
 //! }
-//!
+//! 
 //! #[derive(Debug, AFastData, AFastKind)]
 //! struct Resp2 {
 //!     id: i64,
 //!     name: String,
 //! }
-//!
-//! #[handler(desc("Get user by id"), mw("auth"), ns("api"))]
-//! async fn get_id(_state: Arc<Mutex<String>>, _header: Header, req: Req2) -> Result<Resp2, Error> {
+//! 
+//! #[handler(desc("Get user by id"), ns("api"))]
+//! async fn get_id(_state: String, _header: Header, req: Req2) -> Result<Resp2, Error> {
 //!     Ok(Resp2 {
 //!         id: req.id,
 //!         name: "John".to_string(),
 //!     })
 //! }
-//!
+//! 
 //! #[derive(Debug, Clone, AFastData, AFastKind)]
 //! struct Header {
-//!     id: u32,
+//!     token: String,
 //! }
-//!
+//! 
+//! #[middleware]
+//! async fn auth(_state: String, header: Header) -> Result<Header, Error> {
+//!     println!("Token: {:?}", header);
+//!     Ok(header)
+//! }
+//! 
 //! #[tokio::main]
 //! async fn main() {
-//!     let state = Arc::new(Mutex::new("".to_string()));
-//!
-//!     let server = AFast::<Mutex<String>, Header>::new(state).service(
-//!         "user",
-//!         "User service",
-//!         register! { get_user, get_id },
-//!     );
-//!
+//!     let state = "".to_string();
+//! 
+//!     let server = AFast::<String, Header>::new(state)
+//!         .service("user", "User service", register! { get_user, get_id })
+//!         .middleware(auth);
+//! 
 //!     server
 //!         .serve(
 //!             #[cfg(feature = "tcp")]
@@ -206,7 +197,7 @@
 //!         .unwrap();
 //! }
 //! ```
-//!
+//! 
 
 use std::sync::Arc;
 
@@ -245,7 +236,7 @@ pub type Middleware<T, H> = dyn Fn(
         T,
         H,
     )
-        -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), Error>> + Send + 'static>>
+        -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<H, Error>> + Send + 'static>>
     + Send
     + Sync;
 
@@ -274,8 +265,6 @@ where
     #[cfg(feature = "doc")]
     pub doc: String,
 
-    /// Middleware functions
-    pub middleware: Box<Middleware<T, H>>,
     /// Namespace for this handler
     pub namespace: Vec<String>,
     /// Actual processing function
@@ -292,6 +281,8 @@ where
 {
     /// Shared application state
     state: T,
+    /// Middleware function
+    pub middleware: Arc<Box<Middleware<T, H>>>,
     /// Registered handler list
     handlers: Arc<Vec<HandlerGeneric<T, H>>>,
 
@@ -326,6 +317,7 @@ where
     pub fn new(state: T) -> Self {
         Self {
             state,
+            middleware: Arc::new(Box::new(|_state, header| Box::pin(async { Ok(header) }))),
             handlers: Arc::new(vec![]),
             #[cfg(feature = "code")]
             codes: std::collections::HashMap::new(),
@@ -335,6 +327,11 @@ where
             #[cfg(feature = "ts")]
             ts_util: true,
         }
+    }
+
+    pub fn middleware(mut self, middleware: fn() -> Box<Middleware<T, H>>) -> Self {
+        self.middleware = Arc::new(middleware());
+        self
     }
 
     #[cfg(feature = "js")]
@@ -410,7 +407,7 @@ where
         #[cfg(feature = "tcp")]
         {
             // Clone shared state and handler list for TCP processing
-            let state = Arc::clone(&self.state);
+            let state = self.state.clone();
             let handlers = Arc::clone(&self.handlers);
 
             // Bind TCP listener
@@ -419,6 +416,7 @@ where
             #[cfg(any(feature = "http", feature = "ws"))]
             {
                 // Spawn TCP listener task if HTTP/WS is also enabled
+                let mw = Arc::clone(&self.middleware);
                 tokio::spawn(async move {
                     loop {
                         let (mut socket, _) = listener.accept().await.unwrap();
@@ -460,21 +458,22 @@ where
                         // Call handler
                         let handler = &handlers[id];
 
-                        let fut = (handler.middleware)(state.clone(), header.clone());
-                        match fut.await {
-                            Ok(_) => {}
+                        let fut = mw(state.clone(), header.clone());
+                        let h = match fut.await {
+                            Ok(r) => {r.to_bytes()}
                             Err(_) => {
                                 continue;
                             }
-                        }
+                        };
                         let fut = (handler.func)(state.clone(), header, &body[size + 8..]);
                         let res = fut.await.unwrap();
 
                         // Build response: len + seq + id + response
-                        let mut final_res = Vec::with_capacity(12 + res.len());
-                        final_res.extend_from_slice(&(len + 8).to_be_bytes());
+                        let mut final_res = Vec::with_capacity(12 + res.len() + h.len());
+                        final_res.extend_from_slice(&final_res.len().to_be_bytes());
                         final_res.extend_from_slice(&seq.to_be_bytes());
                         final_res.extend_from_slice(&id.to_be_bytes());
+                        final_res.extend_from_slice(&h);
                         final_res.extend_from_slice(&res);
 
                         tokio::io::AsyncWriteExt::write_all(&mut socket, &final_res)
@@ -567,6 +566,7 @@ where
                         T,
                         Arc<Vec<HandlerGeneric<T, H>>>,
                     )>,
+                          axum::Extension(mw): axum::Extension<Arc<Box<Middleware<T, H>>>>,
                           ws: axum::extract::ws::WebSocketUpgrade| async move {
                         ws.on_upgrade(|mut ws| async move {
                             loop {
@@ -599,19 +599,20 @@ where
 
                                     let handler = &handlers[id];
 
-                                    let fut = (handler.middleware)(state.clone(), header.clone());
-                                    match fut.await {
-                                        Ok(_) => {}
+                                    let fut = mw(state.clone(), header.clone());
+                                    let h=match fut.await {
+                                        Ok(r) => {r.to_bytes()}
                                         Err(_) => {
                                             continue;
                                         }
-                                    }
+                                    };
                                     let fut =
                                         (handler.func)(state.clone(), header, &body[size + 8..]);
                                     let res = fut.await.unwrap();
-                                    let mut final_res = Vec::with_capacity(8 + res.len());
+                                    let mut final_res = Vec::with_capacity(8 + res.len() + h.len());
                                     final_res.extend_from_slice(&seq.to_be_bytes());
                                     final_res.extend_from_slice(&id.to_be_bytes());
+                                    final_res.extend_from_slice(&h);
                                     final_res.extend_from_slice(&res);
                                     ws.send(axum::extract::ws::Message::Binary(final_res.into()))
                                         .await
@@ -632,6 +633,7 @@ where
                         T,
                         Arc<Vec<HandlerGeneric<T, H>>>,
                     )>,
+                          axum::Extension(mw): axum::Extension<Arc<Box<Middleware<T, H>>>>,
                           body: axum::body::Bytes| async move {
                         let (header, size) = match H::from_bytes(&body[..]) {
                             Ok(h) => h,
@@ -662,9 +664,9 @@ where
                         ]);
                         let handler = &handlers[id as usize];
 
-                        let fut = (handler.middleware)(state.clone(), header.clone());
-                        match fut.await {
-                            Ok(_) => {}
+                        let fut = mw(state.clone(), header.clone());
+                        let h = match fut.await {
+                            Ok(r) => r.to_bytes(),
                             Err(e) => {
                                 return axum::response::Response::builder()
                                     .status(400)
@@ -673,12 +675,13 @@ where
                                     )))
                                     .unwrap();
                             }
-                        }
+                        };
                         let fut = (handler.func)(state.clone(), header, &body[size + 4..]);
                         match fut.await {
                             Ok(res) => {
-                                let mut final_res = Vec::with_capacity(4 + res.len());
+                                let mut final_res = Vec::with_capacity(4 + res.len() + h.len());
                                 final_res.extend_from_slice(&id.to_be_bytes());
+                                final_res.extend_from_slice(&h);
                                 final_res.extend_from_slice(&res);
                                 axum::response::Response::builder()
                                     .status(200)
@@ -833,6 +836,7 @@ where
 
             // Attach shared state and CORS
             let app = app.layer(axum::Extension((state, handlers)));
+            let app = app.layer(axum::Extension(Arc::clone(&self.middleware)));
             #[cfg(feature = "code")]
             let app = app.layer(axum::Extension(self.codes.clone()));
             let app = app.layer(axum::Extension(self.services.clone()));

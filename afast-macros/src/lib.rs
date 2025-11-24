@@ -1,16 +1,16 @@
 //! # AFast
-//!
+//! 
 //! **AFast** is a high-performance asynchronous Rust backend framework designed
 //! to simplify building networked applications. It supports multiple protocols
 //! via feature flags and provides automatic code generation for clients
 //! (TypeScript and JavaScript), API documentation, and field validation.
-//!
+//! 
 //! ## Instructions
-//!
+//! 
 //! ### Supported Protocol Features
-//!
+//! 
 //! You can enable the following features in your `Cargo.toml`:
-//!
+//! 
 //! - `http` - enable HTTP support
 //!   - `/` - Document path (feature flag `doc`)
 //!   - `/api` - HTTP API endpoints
@@ -24,65 +24,63 @@
 //! - `js` - enable JavaScript client generation (auto enabled `code`)
 //! - `ts` - enable TypeScript client generation (auto enabled `code`)
 //! - `code` - enable code generation
-//!
+//! 
 //! **Note on TCP usage:**  
-//!
+//! 
 //! If the `tcp` feature is enabled, the `AFast::serve` method takes two arguments:
-//!
+//! 
 //! 1. The TCP address to listen on (`"127.0.0.1:8080"`).  
 //! 2. The HTTP/WS address (`"127.0.0.1:8081"`) for web clients and generated JS/TS clients.
-//!
+//! 
 //! This allows you to run TCP and HTTP/WS servers simultaneously in the same application.
-//!
+//! 
 //! ### Key Features
-//!
+//! 
 //! - **`handler` Macro**: Declare HTTP endpoints with minimal boilerplate
 //!   - Automatic TypeScript/JavaScript client generation
 //!   - Namespace support for organized API structure (`ns("api.v1.user")`)
-//!   - Middleware chaining for authentication/validation (`mws("auth")`)
 //!   - Descriptive API documentation generation (`desc("Get user info")`)
 //! - Automatic field validation with custom rules
 //! - Async handler functions with state management
 //! - Flexible multi-protocol support: HTTP, WS, TCP
-//!
+//! 
 //! #### Handler Macro Overview
-//!
+//! 
 //! The `#[handler]` attribute macro transforms async functions into full-featured API endpoints:
-//!
+//! 
 //! ```rust
-//! #[handler(desc("Get user information"), ns("api.v1.user"), mws("auth"))]
+//! #[handler(desc("Get user information"), ns("api.v1.user"))]
 //! async fn get_user(state: String, header: Header, req: Request) -> Result<Response, Error> {
 //!     // Your business logic
 //! }
 //! ```
-//!
+//! 
 //! **Macro Parameters:**
-//!
+//! 
 //! - `desc("description")` - API description for documentation
 //! - `ns("api.v1.user")` - Namespace for nested JS client generation
-//! - `mws("auth,validation")` - Middleware chain for pre-processing
-//!
+//! 
 //! **Generated Output:**
-//!
+//! 
 //! - Type-safe HTTP endpoints
 //! - Nested JavaScript client structure
 //! - TypeScript type definitions  
 //! - OpenAPI documentation
-//!
+//! 
 //! ### Upcoming Features / Development Plan
-//!
+//! 
 //! - Nested structure validation for complex types
 //! - Enable or disable js / ts / document by feature flags
 //! - Add command for generating client code
 //! - Generate client code for additional languages: Java, Kotlin, C#, Rust, etc.
 //! - Improved code generation templates for easier integration
 //! - Enhanced error handling and validation reporting
-//!
+//! 
 //! ## Example
-//!
+//! 
 //! ```rust
-//! use afast::{AFast, AFastData, AFastKind, Error, Field, Kind, Tag, handler, register};
-//!
+//! use afast::{AFast, AFastData, AFastKind, Error, Field, Kind, Tag, handler, middleware, register};
+//! 
 //! #[derive(Debug, Clone, AFastData, AFastKind)]
 //! enum Sex {
 //!     Other,
@@ -96,7 +94,7 @@
 //!         name: String,
 //!     },
 //! }
-//!
+//! 
 //! #[derive(Debug, Clone, AFastData, AFastKind)]
 //! struct Request {
 //!     #[validate(desc("User ID"))]
@@ -119,13 +117,13 @@
 //!     #[validate(desc("User sex"))]
 //!     sex: Sex,
 //! }
-//!
+//! 
 //! #[derive(Debug, Clone, AFastData, AFastKind)]
 //! struct Hobby {
 //!     id: i64,
 //!     name: String,
 //! }
-//!
+//! 
 //! #[derive(Debug, AFastData, AFastKind)]
 //! pub struct Response {
 //!     sex: Sex,
@@ -136,13 +134,9 @@
 //!     tags: Vec<String>,
 //!     gender: Option<bool>,
 //! }
-//!
+//! 
 //! #[handler(desc("Get user information"), ns("api.user"))]
-//! async fn get_user(
-//!     _state: String,
-//!     _header: Header,
-//!     req: Request,
-//! ) -> Result<Response, Error> {
+//! async fn get_user(_state: String, _header: Header, req: Request) -> Result<Response, Error> {
 //!     Ok(Response {
 //!         id: req.id,
 //!         name: req.name.clone(),
@@ -153,46 +147,45 @@
 //!         sex: req.sex.clone(),
 //!     })
 //! }
-//!
-//! async fn auth(_state: String, header: Header) -> Result<(), Error> {
-//!     println!("Token: {:?}", header);
-//!     Ok(())
-//! }
-//!
+//! 
 //! #[derive(Debug, AFastData, AFastKind)]
 //! struct Req2 {
 //!     id: i64,
 //! }
-//!
+//! 
 //! #[derive(Debug, AFastData, AFastKind)]
 //! struct Resp2 {
 //!     id: i64,
 //!     name: String,
 //! }
-//!
-//! #[handler(desc("Get user by id"), mw("auth"), ns("api"))]
+//! 
+//! #[handler(desc("Get user by id"), ns("api"))]
 //! async fn get_id(_state: String, _header: Header, req: Req2) -> Result<Resp2, Error> {
 //!     Ok(Resp2 {
 //!         id: req.id,
 //!         name: "John".to_string(),
 //!     })
 //! }
-//!
+//! 
 //! #[derive(Debug, Clone, AFastData, AFastKind)]
 //! struct Header {
-//!     id: u32,
+//!     token: String,
 //! }
-//!
+//! 
+//! #[middleware]
+//! async fn auth(_state: String, header: Header) -> Result<Header, Error> {
+//!     println!("Token: {:?}", header);
+//!     Ok(header)
+//! }
+//! 
 //! #[tokio::main]
 //! async fn main() {
 //!     let state = "".to_string();
-//!
-//!     let server = AFast::<String, Header>::new(state).service(
-//!         "user",
-//!         "User service",
-//!         register! { get_user, get_id },
-//!     );
-//!
+//! 
+//!     let server = AFast::<String, Header>::new(state)
+//!         .service("user", "User service", register! { get_user, get_id })
+//!         .middleware(auth);
+//! 
 //!     server
 //!         .serve(
 //!             #[cfg(feature = "tcp")]
@@ -204,7 +197,7 @@
 //!         .unwrap();
 //! }
 //! ```
-//!
+//! 
 
 use proc_macro::TokenStream;
 
@@ -212,6 +205,15 @@ mod atd;
 mod deserialize;
 mod handler;
 mod serialize;
+
+use quote::quote;
+use syn::{
+    Attribute, Data, DeriveInput, FnArg, ItemFn, LitInt, LitStr, Meta, PatType, Token,
+    parse::{Parse, ParseStream},
+    parse_macro_input,
+    punctuated::Punctuated,
+    spanned::Spanned as _,
+};
 
 /// Attribute macro to define an API handler.
 #[proc_macro_attribute]
@@ -225,14 +227,37 @@ pub fn register(input: TokenStream) -> TokenStream {
     atd::register(input)
 }
 
-use quote::quote;
-use syn::{
-    Attribute, Data, DeriveInput, LitInt, LitStr, Meta, Token,
-    parse::{Parse, ParseStream},
-    parse_macro_input,
-    punctuated::Punctuated,
-    spanned::Spanned as _,
-};
+#[proc_macro_attribute]
+pub fn middleware(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as ItemFn);
+
+    let ident = &input.sig.ident;
+    let vis = &input.vis;
+    let block = &input.block;
+    let sig = &input.sig;
+    let mut state_ty = None;
+    let mut header_ty = None;
+    for (i, arg) in sig.inputs.iter().enumerate() {
+        if let FnArg::Typed(PatType { ty, .. }) = arg {
+            match i {
+                0 => state_ty = Some(ty.clone()),
+                1 => header_ty = Some(ty.clone()),
+                _ => {}
+            }
+        }
+    }
+
+    let state_ty = state_ty.expect("Expected first parameter to be state");
+    let header_ty = header_ty.expect("Expected second parameter to be header");
+
+    TokenStream::from(quote! {
+        #vis fn #ident() -> Box<afast::Middleware<#state_ty, #header_ty>> {
+            Box::new(|state, header| Box::pin(async move {
+                #block
+            }))
+        }
+    })
+}
 
 /// Derive macro to generate serialization, deserialization, and validation implementations.
 #[proc_macro_derive(AFastData, attributes(validate, afast))]

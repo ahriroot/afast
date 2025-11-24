@@ -1,4 +1,4 @@
-use afast::{AFast, AFastData, AFastKind, Error, Field, Kind, Tag, handler, register};
+use afast::{AFast, AFastData, AFastKind, Error, Field, Kind, Tag, handler, middleware, register};
 
 #[derive(Debug, Clone, AFastData, AFastKind)]
 enum Sex {
@@ -55,11 +55,7 @@ pub struct Response {
 }
 
 #[handler(desc("Get user information"), ns("api.user"))]
-async fn get_user(
-    _state: String,
-    _header: Header,
-    req: Request,
-) -> Result<Response, Error> {
+async fn get_user(_state: String, _header: Header, req: Request) -> Result<Response, Error> {
     Ok(Response {
         id: req.id,
         name: req.name.clone(),
@@ -69,11 +65,6 @@ async fn get_user(
         gender: req.gender,
         sex: req.sex.clone(),
     })
-}
-
-async fn auth(_state: String, header: Header) -> Result<(), Error> {
-    println!("Token: {:?}", header);
-    Ok(())
 }
 
 #[derive(Debug, AFastData, AFastKind)]
@@ -87,7 +78,7 @@ struct Resp2 {
     name: String,
 }
 
-#[handler(desc("Get user by id"), mw("auth"), ns("api"))]
+#[handler(desc("Get user by id"), ns("api"))]
 async fn get_id(_state: String, _header: Header, req: Req2) -> Result<Resp2, Error> {
     Ok(Resp2 {
         id: req.id,
@@ -97,18 +88,22 @@ async fn get_id(_state: String, _header: Header, req: Req2) -> Result<Resp2, Err
 
 #[derive(Debug, Clone, AFastData, AFastKind)]
 struct Header {
-    id: u32,
+    token: String,
+}
+
+#[middleware]
+async fn auth(_state: String, header: Header) -> Result<Header, Error> {
+    println!("Token: {:?}", header);
+    Ok(header)
 }
 
 #[tokio::main]
 async fn main() {
     let state = "".to_string();
 
-    let server = AFast::<String, Header>::new(state).service(
-        "user",
-        "User service",
-        register! { get_user, get_id },
-    );
+    let server = AFast::<String, Header>::new(state)
+        .service("user", "User service", register! { get_user, get_id })
+        .middleware(auth);
 
     server
         .serve(

@@ -1,5 +1,5 @@
 use proc_macro::TokenStream;
-use quote::{format_ident, quote};
+use quote::quote;
 use syn::{
     FnArg, ItemFn, LitStr, Meta, Pat, PatType, parse_macro_input, punctuated::Punctuated, token,
 };
@@ -15,7 +15,7 @@ use syn::{
 /// # Usage
 ///
 /// ```rust
-/// #[handler(desc("Get user information"), ns("api.user"), mw("auth"))]
+/// #[handler(desc("Get user information"), ns("api.user"))]
 /// async fn get_user(
 ///     state: Arc<Mutex<String>>,
 ///     header: Header,
@@ -36,7 +36,6 @@ use syn::{
 ///
 /// - `desc("...")` — API description for documentation and client generation
 /// - `ns("...")` — Namespace path for nested client generation (dot-separated)
-/// - `mw("...")` — Middleware chain (comma-separated function names)
 pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as ItemFn);
 
@@ -121,11 +120,6 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
     let args = parse_macro_input!(attr with Punctuated<Meta, token::Comma>::parse_terminated);
     #[cfg(feature = "code")]
     let mut desc = String::new();
-    let mut mw = quote! {
-        Box::new(|state: #state_ty, header: #header_ty| {
-            Box::pin(async move { Ok(()) })
-        })
-    };
     let mut namespace: Vec<String> = Vec::new();
 
     for arg in args {
@@ -136,21 +130,6 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
                 if meta.path.is_ident("desc") {
                     if let Ok(lit) = meta.parse_args::<LitStr>() {
                         desc = lit.value();
-                    }
-                }
-                if meta.path.is_ident("mw") {
-                    if let Ok(lit) = meta.parse_args::<LitStr>() {
-                        let ident = format_ident!("{}", lit.value().trim());
-                        mw = quote! {
-                            Box::new(|state: #state_ty, header: #header_ty| {
-                                Box::pin(async move {
-                                    match #ident(state, header).await {
-                                        Ok(_) => Ok(()),
-                                        Err(e) => Err(e),
-                                    }
-                                })
-                            })
-                        };
                     }
                 }
                 if meta.path.is_ident("ns") {
@@ -195,6 +174,9 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
                 js.push(code);
                 js.push("const _b2=new AFastByteReader(await this._call(_b1.tU8A()));".to_string());
                 js.push("_b2.rI32();".to_string());
+                let code = #header_ty::field("_header2").gen_bytes_to_js(0);
+                js.push(code);
+                js.push("this._hook?.(_header2);".to_string());
                 let code = #resp_ty::field("response").gen_bytes_to_js(0);
                 js.push(code);
                 js.push("return response;}".to_string());
@@ -228,6 +210,9 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
                 ts.push(code);
                 ts.push("const _b2=new AFastByteReader(await this._call(_b1.tU8A()));".to_string());
                 ts.push("_b2.rI32();".to_string());
+                let code = #header_ty::field("_header2").gen_bytes_to_ts(0);
+                ts.push(code);
+                ts.push("this._hook?.(_header2);".to_string());
                 let code = #resp_ty::field("response").gen_bytes_to_ts(0);
                 ts.push(code);
                 ts.push("return response as any;}".to_string());
@@ -267,16 +252,6 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
         });
     }
 
-    wrapper_args.push(quote! {
-        Box<
-            dyn Fn(
-                #state_ty,
-                #header_ty,
-            ) -> std::pin::Pin<
-                Box<dyn std::future::Future<Output = Result<(), afast::Error>> + Send>
-            > + Send + Sync + 'static,
-        >
-    });
     wrapper_args.push(quote! { Vec<String> });
     wrapper_args.push(quote! {
         Box<
@@ -289,7 +264,6 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
             > + Send + Sync + 'static,
         >
     });
-    wrapper_returns.push(mw);
     wrapper_returns.push(quote! {vec![#(#namespace.to_string()),*]});
     wrapper_returns.push(quote! {
         Box::new(|state: #state_ty, header: #header_ty, req: &[u8]| {
@@ -355,7 +329,7 @@ pub fn register(input: TokenStream) -> TokenStream {
         #[cfg(feature = "doc")]
         wrapper_args.push(quote! { doc });
 
-        wrapper_args.push(quote! {middleware, namespace, func});
+        wrapper_args.push(quote! {namespace, func});
 
         registrations.push(quote! {
             {

@@ -20,7 +20,6 @@ export const generateDefault = (schema: FieldDef[]): Record<string, any> => {
                 result[field.name] = ''
                 break
             case 'enum':
-                console.log(field.variants)
                 switch (field.variants[0]!.kind) {
                     case 'object':
                         result[field.name] = {_type:0,...generateDefault(field.variants[0]!.fields)}

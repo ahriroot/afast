@@ -25,6 +25,9 @@ const client = new AFastClient({
             token: () => { return localStorage.getItem('token') },
         }
     },
+    hook: async (header) => {
+        console.log('hook:', header);
+    },
     call: async (buf) => {
         console.log(buf);
         const response = await fetch('http://host/api', {
@@ -52,6 +55,9 @@ const client = new AFastClient({
             token: () => { return localStorage.getItem('token') },
         }
     },
+    hook: async (header: {token: string}) => {
+        console.log('hook:', header);
+    },
     call: async (buf) => {
         console.log(buf);
         const response = await fetch('http://host/api', {
@@ -77,7 +83,7 @@ const response = await client[.namespace1.namespace2].handle({});`
     <div class="index">
         <NScrollbar>
             <div class="container">
-                <NModal :show="showExample" style="width: 900px;">
+                <NModal :show="showExample" style="width: 900px;" @close="showExample = false">
                     <NCard>
                         <h1>1: Get client code</h1>
                         <p>http://host/code/{service}/{lang}</p>
