@@ -258,7 +258,7 @@ const response = await client[.namespace1.namespace2].handle({});`
                                     <NCode :code="safeStringify(i.data)" :language="'json'" word-wrap />
                                     <NCard>
                                         {{ i.api.req_type }}
-                                    </NCard>Z
+                                    </NCard>
                                 </NCard>
                                 <NCard title="Response">
                                     <NCode :code="safeStringify(i.resp)" :language="'json'" word-wrap />

@@ -1,4 +1,4 @@
-import{a as e,c as t,i as n,n as r,o as i,r as a,s as o,t as s}from"./Tabs-pH0WDjvs.js";import{An as c,Cn as l,En as u,Kt as d,On as f,Zt as p,dn as m,en as h,gn as g,i as _,nn as v,r as y,rn as b,tn as x,vn as S}from"./index-YptXCz2k.js";var C={class:`index`},w={class:`container`},T=[`onClick`],E=`import { AFastClient } from 'xxx';
+import{a as e,c as t,i as n,n as r,o as i,r as a,s as o,t as s}from"./Tabs-DRxzYkuC.js";import{An as c,Cn as l,En as u,Kt as d,On as f,Zt as p,dn as m,en as h,gn as g,i as _,nn as v,r as y,rn as b,tn as x,vn as S}from"./index-CpWB-UPI.js";var C={class:`index`},w={class:`container`},T=[`onClick`],E=`import { AFastClient } from 'xxx';
 
 const client = new AFastClient({
     header: async () => {
