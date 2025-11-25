@@ -18,14 +18,25 @@ pub fn gen_serialize_code(
                 if let PathArguments::AngleBracketed(args) = &seg.arguments {
                     if let Some(GenericArgument::Type(inner_ty)) = args.args.first() {
                         let inner_code = gen_serialize_code(inner_ty, quote!(v), depth + 1);
-                        return quote! {
-                            if let Some(v) = #access {
-                                buf.push(1);
-                                #inner_code
-                            } else {
-                                buf.push(0);
-                            }
-                        };
+                        if needs_deref(inner_ty) {
+                            return quote! {
+                                if let Some(v) = &#access {
+                                    buf.push(1);
+                                    #inner_code
+                                } else {
+                                    buf.push(0);
+                                }
+                            };
+                        } else {
+                            return quote! {
+                                if let Some(v) = #access {
+                                    buf.push(1);
+                                    #inner_code
+                                } else {
+                                    buf.push(0);
+                                }
+                            };
+                        }
                     }
                 }
             }
@@ -133,4 +144,24 @@ pub fn gen_serialize_code(
             }
         }
     }
+}
+
+fn needs_deref(ty: &Type) -> bool {
+    if let Type::Path(tp) = ty {
+        if let Some(seg) = tp.path.segments.last() {
+            let ident = seg.ident.to_string();
+            match ident.as_str() {
+                "i8" | "i16" | "i32" | "i64" | "i128" | "u8" | "u16" | "u32" | "u64" | "u128"
+                | "f32" | "f64" | "bool" => {
+                    // 基本类型，实现了 Copy，不需要解引用
+                    return false;
+                }
+                _ => {
+                    // 其他类型（String、自定义类型等）需要解引用
+                    return true;
+                }
+            }
+        }
+    }
+    true // 默认情况下需要解引用
 }

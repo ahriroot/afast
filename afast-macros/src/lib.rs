@@ -79,7 +79,7 @@
 //! ## Example
 //! 
 //! ```rust
-//! use afast::{AFast, AFastData, AFastKind, Error, Field, Kind, Tag, handler, middleware, register};
+//! use afast::{AFast, AFastData, AFastKind, Error, handler, middleware, register};
 //! 
 //! #[derive(Debug, Clone, AFastData, AFastKind)]
 //! enum Sex {
@@ -347,12 +347,12 @@ pub fn derive_get_kind(input: TokenStream) -> TokenStream {
 
     let expanded = quote! {
         impl #impl_generics AFastKind for #name #ty_generics #where_clause {
-            fn kind() -> Kind {
+            fn kind() -> afast::Kind {
                 #kind_impl
             }
 
-            fn field(name: &str) -> Field {
-                Field { name: name.to_string(), kind: <#name as AFastKind>::kind(), tag: None }
+            fn field(name: &str) -> afast::Field {
+                afast::Field { name: name.to_string(), kind: <#name as AFastKind>::kind(), tag: None }
             }
         }
     };
@@ -377,11 +377,11 @@ fn generate_kind_expression(data: &Data) -> Result<proc_macro2::TokenStream, syn
                     let tag_expr = generate_tag_expression(&field_tag);
 
                     field_kinds.push(quote! {
-                        Field { name: stringify!(#field_name).to_string(), kind: #kind_expr, tag: #tag_expr }
+                        afast::Field { name: stringify!(#field_name).to_string(), kind: #kind_expr, tag: #tag_expr }
                     });
                 }
 
-                Ok(quote! { Kind::Struct { fields: vec![#(#field_kinds),*] } })
+                Ok(quote! { afast::Kind::Struct { fields: vec![#(#field_kinds),*] } })
             }
             syn::Fields::Unnamed(fields) => {
                 let mut field_kinds = Vec::new();
@@ -395,18 +395,18 @@ fn generate_kind_expression(data: &Data) -> Result<proc_macro2::TokenStream, syn
                     let tag_expr = generate_tag_expression(&field_tag);
 
                     field_kinds.push(quote! {
-                        Field { name: format!("_{}", #i), kind: #kind_expr, tag: #tag_expr }
+                        afast::Field { name: format!("_{}", #i), kind: #kind_expr, tag: #tag_expr }
                     });
                 }
-                Ok(quote! { Kind::Struct { fields: vec![#(#field_kinds),*] } })
+                Ok(quote! { afast::Kind::Struct { fields: vec![#(#field_kinds),*] } })
             }
-            syn::Fields::Unit => Ok(quote! { Kind::Struct { fields: vec![] } }),
+            syn::Fields::Unit => Ok(quote! { afast::Kind::Struct { fields: vec![] } }),
         },
         Data::Enum(data_enum) => {
             let mut variant_kinds = Vec::new();
             for variant in &data_enum.variants {
                 let variant_kind = match &variant.fields {
-                    syn::Fields::Unit => quote! { Kind::Unit },
+                    syn::Fields::Unit => quote! { afast::Kind::Unit },
                     syn::Fields::Unnamed(fields) => {
                         let mut field_kinds = Vec::new();
                         for (i, f) in fields.unnamed.iter().enumerate() {
@@ -418,9 +418,9 @@ fn generate_kind_expression(data: &Data) -> Result<proc_macro2::TokenStream, syn
                             let field_tag = parse_tags(&f.attrs)?;
                             let tag_expr = generate_tag_expression(&field_tag);
 
-                            field_kinds.push(quote! { Field { name: format!("_{}", #i), kind: #kind_expr, tag: #tag_expr } });
+                            field_kinds.push(quote! { afast::Field { name: format!("_{}", #i), kind: #kind_expr, tag: #tag_expr } });
                         }
-                        quote! { Kind::Struct { fields: vec![#(#field_kinds),*] } }
+                        quote! { afast::Kind::Struct { fields: vec![#(#field_kinds),*] } }
                     }
                     syn::Fields::Named(fields) => {
                         let mut field_kinds = Vec::new();
@@ -434,16 +434,16 @@ fn generate_kind_expression(data: &Data) -> Result<proc_macro2::TokenStream, syn
                             let field_tag = parse_tags(&f.attrs)?;
                             let tag_expr = generate_tag_expression(&field_tag);
 
-                            field_kinds.push(quote! { Field { name: stringify!(#field_name).to_string(), kind: #kind_expr, tag: #tag_expr } });
+                            field_kinds.push(quote! { afast::Field { name: stringify!(#field_name).to_string(), kind: #kind_expr, tag: #tag_expr } });
                         }
-                        quote! { Kind::Struct { fields: vec![#(#field_kinds),*] } }
+                        quote! { afast::Kind::Struct { fields: vec![#(#field_kinds),*] } }
                     }
                 };
                 variant_kinds.push(variant_kind);
             }
-            Ok(quote! { Kind::Enum { variants: vec![#(#variant_kinds),*] } })
+            Ok(quote! { afast::Kind::Enum { variants: vec![#(#variant_kinds),*] } })
         }
-        Data::Union(_) => Ok(quote! { Kind::Struct { fields: vec![] } }),
+        Data::Union(_) => Ok(quote! { afast::Kind::Struct { fields: vec![] } }),
     }
 }
 
@@ -483,7 +483,7 @@ fn generate_tag_expression(tag: &Tag) -> proc_macro2::TokenStream {
     {
         quote! { None }
     } else {
-        quote! { Some(Tag { name: #name, description: #description, required: #required, min: #min, max: #max }) }
+        quote! { Some(afast::Tag { name: #name, description: #description, required: #required, min: #min, max: #max }) }
     }
 }
 
@@ -542,46 +542,46 @@ fn type_to_kind_expr(ty: &syn::Type) -> proc_macro2::TokenStream {
                     if type_name == "Option" {
                         if let Some(syn::GenericArgument::Type(inner_ty)) = args.args.first() {
                             let inner_kind = type_to_kind_expr(inner_ty);
-                            return quote! { Kind::Nullable(Box::new(#inner_kind)) };
+                            return quote! { afast::Kind::Nullable(Box::new(#inner_kind)) };
                         }
                     } else if type_name == "Vec" {
                         if let Some(syn::GenericArgument::Type(inner_ty)) = args.args.first() {
                             let inner_kind = type_to_kind_expr(inner_ty);
-                            return quote! { Kind::Vec(Box::new(#inner_kind)) };
+                            return quote! { afast::Kind::Vec(Box::new(#inner_kind)) };
                         }
                     }
                 }
                 match type_name.as_str() {
-                    "i8" => quote! { Kind::I8 },
-                    "i16" => quote! { Kind::I16 },
-                    "i32" => quote! { Kind::I32 },
-                    "i64" => quote! { Kind::I64 },
-                    "i128" => quote! { Kind::I128 },
-                    "u8" => quote! { Kind::U8 },
-                    "u16" => quote! { Kind::U16 },
-                    "u32" => quote! { Kind::U32 },
-                    "u64" => quote! { Kind::U64 },
-                    "u128" => quote! { Kind::U128 },
-                    "f32" => quote! { Kind::F32 },
-                    "f64" => quote! { Kind::F64 },
-                    "bool" => quote! { Kind::Bool },
-                    "String" => quote! { Kind::String },
-                    "str" => quote! { Kind::String },
-                    "()" => quote! { Kind::Unit },
+                    "i8" => quote! { afast::Kind::I8 },
+                    "i16" => quote! { afast::Kind::I16 },
+                    "i32" => quote! { afast::Kind::I32 },
+                    "i64" => quote! { afast::Kind::I64 },
+                    "i128" => quote! { afast::Kind::I128 },
+                    "u8" => quote! { afast::Kind::U8 },
+                    "u16" => quote! { afast::Kind::U16 },
+                    "u32" => quote! { afast::Kind::U32 },
+                    "u64" => quote! { afast::Kind::U64 },
+                    "u128" => quote! { afast::Kind::U128 },
+                    "f32" => quote! { afast::Kind::F32 },
+                    "f64" => quote! { afast::Kind::F64 },
+                    "bool" => quote! { afast::Kind::Bool },
+                    "String" => quote! { afast::Kind::String },
+                    "str" => quote! { afast::Kind::String },
+                    "()" => quote! { afast::Kind::Unit },
                     _ => quote! { <#ty as AFastKind>::kind() },
                 }
             } else {
-                quote! { Kind::String }
+                quote! { afast::Kind::String }
             }
         }
         syn::Type::Tuple(type_tuple) => {
             if type_tuple.elems.is_empty() {
-                quote! { Kind::Unit }
+                quote! { afast::Kind::Unit }
             } else {
-                quote! { Kind::String }
+                quote! { afast::Kind::String }
             }
         }
-        _ => quote! { Kind::String },
+        _ => quote! { afast::Kind::String },
     }
 }
 

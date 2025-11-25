@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { NConfigProvider, NMessageProvider, darkTheme, NGlobalStyle } from 'naive-ui'
+import { NConfigProvider, NNotificationProvider, NMessageProvider, darkTheme, NGlobalStyle } from 'naive-ui'
 import hljs from 'highlight.js/lib/core'
 import json from 'highlight.js/lib/languages/json'
 import js from 'highlight.js/lib/languages/javascript'
@@ -10,11 +10,13 @@ hljs.registerLanguage('javascript', js)
 
 <template>
     <NConfigProvider :hljs="hljs" :theme="darkTheme">
-        <NMessageProvider keep-alive-on-hover>
-            <div class="app">
-                <router-view />
-            </div>
-        </NMessageProvider>
+        <NNotificationProvider>
+            <NMessageProvider keep-alive-on-hover>
+                <div class="app">
+                    <router-view />
+                </div>
+            </NMessageProvider>
+        </NNotificationProvider>
         <NGlobalStyle />
     </NConfigProvider>
 </template>

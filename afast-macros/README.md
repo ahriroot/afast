@@ -79,7 +79,7 @@ async fn get_user(state: String, header: Header, req: Request) -> Result<Respons
 ## Example
 
 ```rust
-use afast::{AFast, AFastData, AFastKind, Error, Field, Kind, Tag, handler, middleware, register};
+use afast::{AFast, AFastData, AFastKind, Error, handler, middleware, register};
 
 #[derive(Debug, Clone, AFastData, AFastKind)]
 enum Sex {

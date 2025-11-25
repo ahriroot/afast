@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onBeforeMount, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { NCode, NInput, NButton, NCollapse, NCollapseItem, NScrollbar, NSpace, useMessage, NCheckbox, NCard, NInputGroup, NModal, NTabs, NTabPane } from 'naive-ui'
+import { NCode, NInput, NButton, NCollapse, NCollapseItem, NScrollbar, NSpace, useMessage, useNotification, NCheckbox, NCard, NInputGroup, NModal, NTabs, NTabPane } from 'naive-ui'
 import hljs from 'highlight.js/lib/core'
 import json from 'highlight.js/lib/languages/json'
 import JsonEditor from '../components/JsonEditor.vue'
@@ -11,6 +11,7 @@ import { generateDefault } from '../utils/default'
 hljs.registerLanguage('json', json)
 const baseURL = import.meta.env.VITE_BASE_URL
 const message = useMessage()
+const notification = useNotification()
 const route = useRoute()
 const router = useRouter()
 const services = ref<any[]>([])
@@ -134,7 +135,13 @@ const submit = async (index: number) => {
             if (error.value && e instanceof error.value) {
                 message.warning(e.message || e.toString())
             } else {
-                message.error(e.message || e.toString())
+                // message.error(e.message || e.toString())
+                notification.error({
+                    title: 'Error',
+                    content: e.message || e.toString(),
+                    duration: 5000,
+                    keepAliveOnHover: true,
+                })
             }
         } finally {
             processings.value[index] = false
