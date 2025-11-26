@@ -1,7 +1,7 @@
 <script lang="ts" setup>
-import { nextTick, ref } from 'vue'
+import { ref, watch } from 'vue'
 import { NTable, NInputGroup, NInput, NInputNumber, NCheckbox, NRadioGroup, NRadio, NSpace, NButton, NEllipsis, NFlex, NTooltip } from 'naive-ui'
-import { generateDefault } from '../utils/default'
+import { generateDefaults } from '../utils/default'
 import type { FieldDef, Kind } from '../types'
 
 const props = defineProps<{
@@ -9,30 +9,43 @@ const props = defineProps<{
     modelValue: Record<string, any>
 }>()
 
+const emit = defineEmits<{
+    (e: 'update:modelValue', value: Record<string, any>): void
+}>()
+
 const data = ref<Record<string, any>>(props.modelValue)
+watch(() => props.modelValue, val => {
+    data.value = val
+})
 
 const addArrayItem = (field: FieldDef, fields: FieldDef[]) => {
-    data.value[field.name].push(generateDefault(fields))
+    data.value[field.name].push(generateDefaults(fields))
 }
 
 const changeNull = (checked: boolean, field: FieldDef) => {
-    data.value[field.name] = checked ? null : generateDefault([field])[field.name]
+    data.value[field.name] = checked ? null : generateDefaults([field])[field.name]
 }
 
-const showEnum = ref(true)
-
-const changeEnumVariant = (field: FieldDef, variant: Kind, index: number) => {
-    showEnum.value = false
-    if (variant.kind === 'object') {
-        data.value[field.name] = { _type: index, ...generateDefault(variant.fields) }
-    } else if (variant.kind === 'unit') {
-        data.value[field.name] = { _type: index }
+const changeEnumVariant = (field: FieldDef | null, variant: Kind, index: number) => {
+    if (field) {
+        if (variant.kind === 'object') {
+            data.value[field.name] = { _type: index, ...generateDefaults(variant.fields) }
+        } else if (variant.kind === 'unit') {
+            data.value[field.name] = { _type: index }
+        } else {
+            throw new Error('Unsupported variant kind')
+        }
     } else {
-        throw new Error('Unsupported variant kind')
+        if (variant.kind === 'object') {
+            data.value = { _type: index, ...generateDefaults(variant.fields) }
+            emit('update:modelValue', data.value)
+        } else if (variant.kind === 'unit') {
+            data.value = { _type: index }
+            emit('update:modelValue', data.value)
+        } else {
+            throw new Error('Unsupported variant kind')
+        }
     }
-    nextTick(() => {
-        showEnum.value = true
-    })
 }
 </script>
 
@@ -42,7 +55,6 @@ const changeEnumVariant = (field: FieldDef, variant: Kind, index: number) => {
             <tbody>
                 <tr v-for="field in props.schema.fields" :key="field.name">
                     <td style="vertical-align: top; width: 200px;">
-
                         <NTooltip>
                             <template #trigger>
                                 <NFlex vertical :gap="0">
@@ -141,7 +153,7 @@ const changeEnumVariant = (field: FieldDef, variant: Kind, index: number) => {
                                 </NRadio>
                             </NSpace>
                         </NRadioGroup>
-                        <template v-if="showEnum && field.variants[data[field.name]._type]?.kind === 'object'">
+                        <template v-if="field.variants[data[field.name]._type]?.kind === 'object'">
                             <br />
                             <br />
                             <JsonEditor :schema="{
@@ -156,6 +168,27 @@ const changeEnumVariant = (field: FieldDef, variant: Kind, index: number) => {
                 </tr>
             </tbody>
         </NTable>
+    </template>
+    <template v-else-if="props.schema.kind === 'enum'">
+        <NRadioGroup v-model:value="data['_type']" name="radiogroup">
+            <NSpace>
+                <NRadio v-for="(variant, index) in props.schema.variants" :key="index" :value="index"
+                    @change="changeEnumVariant(null, variant, index)">
+                    {{ index }}
+                </NRadio>
+            </NSpace>
+        </NRadioGroup>
+        <template v-if="props.schema.variants[data['_type']]?.kind === 'object'">
+            <br />
+            <br />
+            <JsonEditor :schema="{
+                name: props.schema.name,
+                desc: props.schema.desc,
+                tag: props.schema.tag,
+                kind: 'object',
+                fields: (props.schema.variants[data['_type']]! as any).fields
+            }" v-model:modelValue="data"></JsonEditor>
+        </template>
     </template>
 </template>
 

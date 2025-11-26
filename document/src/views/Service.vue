@@ -102,7 +102,7 @@ onBeforeMount(async () => {
         const schemaData = await schema.json()
         for (let resp of schemaData) {
             services.value.push({
-                data: generateDefault(resp.request.fields as any),
+                data: generateDefault(resp.request),
                 api: resp,
                 resp: null,
                 preview: false,

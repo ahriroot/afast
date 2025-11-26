@@ -1,39 +1,45 @@
 import type { FieldDef } from '../types'
 
-export const generateDefault = (schema: FieldDef[]): Record<string, any> => {
+export const generateDefault = (field: FieldDef): any => {
+    switch (field.kind) {
+        case 'object':
+            const objResult: Record<string, any> = {}
+            for (const subField of field.fields) {
+                objResult[subField.name] = generateDefault(subField)
+            }
+            return objResult
+        case 'array':
+            return []
+        case 'number':
+            return field.tag?.min?.value || 0
+        case 'boolean':
+            return false
+        case 'string':
+            return ''
+        case 'enum':
+            if (field.variants.length > 0) {
+                const firstVariant = field.variants[0]!
+                switch (firstVariant.kind) {
+                    case 'object':
+                        return { _type: 0, ...generateDefault(firstVariant) }
+                    case 'unit':
+                        return { _type: 0 }
+                    default:
+                        return { _type: 0 }
+                }
+            }
+            return { _type: 0 }
+        case 'unit':
+            return null
+        default:
+            return null
+    }
+}
+
+export const generateDefaults = (schema: FieldDef[]): Record<string, any> => {
     const result: Record<string, any> = {}
     for (const field of schema) {
-        switch (field.kind) {
-            case 'object':
-                result[field.name] = generateDefault(field.fields)
-                break
-            case 'array':
-                result[field.name] = []
-                break
-            case 'number':
-                result[field.name] = field.tag?.min?.value || 0
-                break
-            case 'boolean':
-                result[field.name] = false
-                break
-            case 'string':
-                result[field.name] = ''
-                break
-            case 'enum':
-                switch (field.variants[0]!.kind) {
-                    case 'object':
-                        result[field.name] = {_type:0,...generateDefault(field.variants[0]!.fields)}
-                        break
-                    case 'unit':
-                        result[field.name] = {_type:0}
-                        break
-                    default:
-                        break
-                }
-                break
-            default:
-                break
-        }
+        result[field.name] = generateDefault(field)
     }
     return result
 }
