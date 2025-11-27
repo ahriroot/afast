@@ -106,7 +106,7 @@ pub fn gen_serialize_code(
                 }
 
                 "bool" => {
-                    quote! { buf.push(if #access { 1 } else { 0 }); }
+                    quote! { buf.push(if #access.clone() { 1 } else { 0 }); }
                 }
 
                 "String" => {

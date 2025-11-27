@@ -118,7 +118,7 @@ pub fn handler_struct(
 }
 
 pub fn handler_enum(
-    _name: &syn::Ident,
+    name: &syn::Ident,
     data: &syn::DataEnum,
 ) -> Result<(Vec<TS>, Vec<TS>, Vec<TS>), Error> {
     let mut serialize_code = Vec::new();
@@ -133,6 +133,8 @@ pub fn handler_enum(
                 let mut field_idents = Vec::new();
                 let mut ser_fields = Vec::new();
                 let mut deser_fields = Vec::new();
+                let mut valid_code = Vec::new();
+                let mut valid_idents = Vec::new();
                 for field in fields_named.named.iter() {
                     let ident = &field.ident;
                     field_idents.push(ident);
@@ -155,25 +157,29 @@ pub fn handler_enum(
                             0,
                         ));
                     }
+                    let mut valid = false;
                     let typ = typ.replace(" ", "");
                     if typ.starts_with("Vec") {
                         if let Some(msg) = tag.required {
-                            valideate_code.push(quote! {
-                                if self.#ident.is_empty() {
+                            valid = true;
+                            valid_code.push(quote! {
+                                if #ident.is_empty() {
                                     return Err(vec![#msg]);
                                 }
                             });
                         }
                         if let Some((min, msg)) = tag.min {
-                            valideate_code.push(quote! {
-                                if self.#ident.len() < #min as usize {
+                            valid = true;
+                            valid_code.push(quote! {
+                                if #ident.len() < #min as usize {
                                     return Err(vec![#msg]);
                                 }
                             });
                         }
                         if let Some((max, msg)) = tag.max {
-                            valideate_code.push(quote! {
-                                if self.#ident.len() > #max as usize {
+                            valid = true;
+                            valid_code.push(quote! {
+                                if #ident.len() > #max as usize {
                                     return Err(vec![#msg]);
                                 }
                             });
@@ -183,8 +189,9 @@ pub fn handler_enum(
                         match typ.as_str() {
                             "String" => {
                                 if let Some(msg) = tag.required {
-                                    valideate_code.push(quote! {
-                                        if self.#ident.is_empty() {
+                                    valid = true;
+                                    valid_code.push(quote! {
+                                        if #ident.is_empty() {
                                             return Err(vec![#msg]);
                                         }
                                     });
@@ -193,34 +200,36 @@ pub fn handler_enum(
                             "i8" | "i16" | "i32" | "i64" | "i128" | "isize" | "u8" | "u16"
                             | "u32" | "u64" | "u128" | "usize" | "f32" | "f64" => {
                                 if let Some(msg) = tag.required {
-                                    valideate_code.push(quote! {
-                                        if self.#ident == 0 {
+                                    valid = true;
+                                    valid_code.push(quote! {
+                                        if *#ident == 0 {
                                             return Err(vec![#msg]);
                                         }
                                     });
                                 }
                                 if let Some((min, msg)) = tag.min {
-                                    valideate_code.push(quote! {
-                                        if self.#ident < #min as #ty {
+                                    valid = true;
+                                    valid_code.push(quote! {
+                                        if *#ident < #min as #ty {
                                             return Err(vec![#msg]);
                                         }
                                     });
                                 }
                                 if let Some((max, msg)) = tag.max {
-                                    valideate_code.push(quote! {
-                                        if self.#ident > #max as #ty {
+                                    valid = true;
+                                    valid_code.push(quote! {
+                                        if *#ident > #max as #ty {
                                             return Err(vec![#msg]);
                                         }
                                     });
                                 }
                             }
                             "Option<u32>" => {}
-                            _ => {
-                                valideate_code.push(quote! {
-                                    self.#ident.validate()?;
-                                });
-                            }
+                            _ => {}
                         }
+                    }
+                    if valid {
+                        valid_idents.push(ident);
                     }
                 }
 
@@ -237,6 +246,14 @@ pub fn handler_enum(
                         Ok((Self::#variant_ident { #( #field_idents ),* }, _offset))
                     }
                 });
+
+                if valid_idents.len() > 0 {
+                    valideate_code.push(quote! {
+                        if let #name::#variant_ident { #( #valid_idents ),*, .. } = self {
+                            #( #valid_code )*
+                        }
+                    });
+                }
             }
             syn::Fields::Unnamed(fields_unnamed) => {
                 let mut field_idents = Vec::new();

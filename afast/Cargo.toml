@@ -1,6 +1,6 @@
 [package]
 name = "afast"
-version = "0.0.10"
+version = "0.0.11"
 edition = "2024"
 authors = ["ahriknow <ahriknow@ahriknow.com>"]
 description = "AFast: high-performance async Rust web framework with HTTP, WS, TCP support, automatic client generation, validation, and documentation."
@@ -14,7 +14,7 @@ categories = ["asynchronous", "network-programming", "web-programming"]
 rust-version = "1.90"
 
 [dependencies]
-# afast-macros = { version = "0.0.10"}
+# afast-macros = { version = "0.0.11"}
 afast-macros = { path = "../afast-macros" }
 backtrace = { version = "0.3", optional = true }
 tokio = { version = "1.48", features = ["full"] }
