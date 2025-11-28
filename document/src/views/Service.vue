@@ -151,6 +151,8 @@ const submit = async (index: number) => {
     }
 }
 
+const filter = ref('')
+
 const showExample = ref(false)
 const jsCode = `import { AFastClient } from 'xxx';
 
@@ -193,7 +195,7 @@ const client = new AFastClient({
     hook: async (header: {token: string}) => {
         console.log('hook:', header);
     },
-    call: async (buf) => {
+    call: async (buf: Uint8Array) => {
         console.log(buf);
         const response = await fetch('http://host/api', {
             method: 'POST',
@@ -233,18 +235,21 @@ const response = await client[.namespace1.namespace2].handle({});`
                     </NTabs>
                 </NModal>
                 <NSpace align="center" justify="end">
-                    <NButton @click="showExample = true">Example</NButton>
-                    <NButton v-show="!editAuthorization" @click="handleEditAuthorization">Authorization
+                    <NInput v-model:value="filter" placeholder="Filter name / desc / namespace" style="width: 260px;" />
+                    <NButton @click="showExample = true" secondary>Example</NButton>
+                    <NButton v-show="!editAuthorization" @click="handleEditAuthorization" secondary>
+                        Authorization
                     </NButton>
                     <NInputGroup v-show="editAuthorization">
-                        <NInput v-model:value="authorization" @click="(e) => e.stopPropagation()" />
-                        <NButton @click="handleSaveAuthorization">
+                        <NInput v-model:value="authorization" @click="(e) => e.stopPropagation()" style="width: 460px;" />
+                        <NButton @click="handleSaveAuthorization" secondary>
                             Save
                         </NButton>
                     </NInputGroup>
                 </NSpace>
                 <NCollapse :expanded-names="expandedNames" :on-update:expanded-names="handleExpandedNames">
-                    <NCollapseItem v-for="(i, index) in services" :title="i.api.desc || '-'" :name="index">
+                    <NCollapseItem v-for="(i, index) in services" :title="i.api.desc || '-'" :name="index"
+                        v-show="filter === '' || i.api.name.includes(filter) || i.api.desc.includes(filter) || i.api.ns.includes(filter)">
                         <template #header>
                             <NSpace align="center">
                                 <h2>{{ i.api.name || '' }}</h2>

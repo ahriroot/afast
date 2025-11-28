@@ -12,7 +12,31 @@ export const generateDefault = (field: FieldDef): any => {
             return []
         case 'number':
             return field.tag?.min?.value || 0
-        case 'boolean':
+        case 'i8':
+            return field.tag?.min?.value || 0
+        case 'i16':
+            return field.tag?.min?.value || 0
+        case 'i32':
+            return field.tag?.min?.value || 0
+        case 'i64':
+            return field.tag?.min?.value || 0
+        case 'i128':
+            return field.tag?.min?.value || 0
+        case 'u8':
+            return field.tag?.min?.value || 0
+        case 'u16':
+            return field.tag?.min?.value || 0
+        case 'u32':
+            return field.tag?.min?.value || 0
+        case 'u64':
+            return field.tag?.min?.value || 0
+        case 'u128':
+            return field.tag?.min?.value || 0
+        case 'f32':
+            return field.tag?.min?.value || 0
+        case 'f64':
+            return field.tag?.min?.value || 0
+        case 'bool':
             return false
         case 'string':
             return ''

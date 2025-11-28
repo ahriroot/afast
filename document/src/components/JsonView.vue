@@ -38,10 +38,14 @@ const props = defineProps<{
                     <td v-if="field.kind === 'number'">
                         number
                     </td>
+                    <td
+                        v-if="field.kind === 'i8' || field.kind === 'i16' || field.kind === 'i32' || field.kind === 'i64' || field.kind === 'i128' || field.kind === 'u8' || field.kind === 'u16' || field.kind === 'u32' || field.kind === 'u64' || field.kind === 'u128' || field.kind === 'f32' || field.kind === 'f64'">
+                        number ({{ field.kind }})
+                    </td>
                     <td v-else-if="field.kind === 'string'">
                         string
                     </td>
-                    <td v-else-if="field.kind === 'boolean'">
+                    <td v-else-if="field.kind === 'bool'">
                         boolean
                     </td>
                     <td v-else-if="field.kind === 'object'">
@@ -54,13 +58,27 @@ const props = defineProps<{
                         }"></JsonView>
                     </td>
                     <td v-else-if="field.kind === 'array'">
-                        <template v-if="field.items.kind === 'number'">
+                        <template v-if="
+                            field.items.kind === 'number'
+                            || field.items.kind === 'i8'
+                            || field.items.kind === 'i16'
+                            || field.items.kind === 'i32'
+                            || field.items.kind === 'i64'
+                            || field.items.kind === 'i128'
+                            || field.items.kind === 'u8'
+                            || field.items.kind === 'u16'
+                            || field.items.kind === 'u32'
+                            || field.items.kind === 'u64'
+                            || field.items.kind === 'u128'
+                            || field.items.kind === 'f32'
+                            || field.items.kind === 'f64'
+                        ">
                             number[]
                         </template>
                         <template v-else-if="field.items.kind === 'string'">
                             string[]
                         </template>
-                        <template v-else-if="field.items.kind === 'boolean'">
+                        <template v-else-if="field.items.kind === 'bool'">
                             boolean[]
                         </template>
                         <template v-else-if="field.items.kind === 'object'">

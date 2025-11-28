@@ -32,14 +32,16 @@ impl Tag {
 
 impl Field {
     pub fn gen_doc(&self) -> String {
-
         let kind_doc = self.kind.gen_doc();
         let tag_doc = if let Some(tag) = &self.tag {
             tag.gen_doc()
         } else {
             "null".to_string()
         };
-        format!(r#"{{"name":"{}","tag":{},{}}}"#, self.name, tag_doc, kind_doc)
+        format!(
+            r#"{{"name":"{}","tag":{},{}}}"#,
+            self.name, tag_doc, kind_doc
+        )
     }
 }
 
@@ -56,19 +58,19 @@ impl Kind {
     fn gen_doc_inner(&self) -> (bool, String) {
         match self {
             Kind::Unit => (false, r#""kind":"unit""#.to_string()),
-            Kind::I8 => (false, r#""kind":"number""#.to_string()),
-            Kind::I16 => (false, r#""kind":"number""#.to_string()),
-            Kind::I32 => (false, r#""kind":"number""#.to_string()),
-            Kind::I64 => (false, r#""kind":"number""#.to_string()),
-            Kind::I128 => (false, r#""kind":"number""#.to_string()),
-            Kind::U8 => (false, r#""kind":"number""#.to_string()),
-            Kind::U16 => (false, r#""kind":"number""#.to_string()),
-            Kind::U32 => (false, r#""kind":"number""#.to_string()),
-            Kind::U64 => (false, r#""kind":"number""#.to_string()),
-            Kind::U128 => (false, r#""kind":"number""#.to_string()),
-            Kind::F32 => (false, r#""kind":"number""#.to_string()),
-            Kind::F64 => (false, r#""kind":"number""#.to_string()),
-            Kind::Bool => (false, r#""kind":"boolean""#.to_string()),
+            Kind::I8 => (false, r#""kind":"i8""#.to_string()),
+            Kind::I16 => (false, r#""kind":"i16""#.to_string()),
+            Kind::I32 => (false, r#""kind":"i32""#.to_string()),
+            Kind::I64 => (false, r#""kind":"i64""#.to_string()),
+            Kind::I128 => (false, r#""kind":"i128""#.to_string()),
+            Kind::U8 => (false, r#""kind":"u8""#.to_string()),
+            Kind::U16 => (false, r#""kind":"u16""#.to_string()),
+            Kind::U32 => (false, r#""kind":"u32""#.to_string()),
+            Kind::U64 => (false, r#""kind":"u64""#.to_string()),
+            Kind::U128 => (false, r#""kind":"u128""#.to_string()),
+            Kind::F32 => (false, r#""kind":"f32""#.to_string()),
+            Kind::F64 => (false, r#""kind":"f64""#.to_string()),
+            Kind::Bool => (false, r#""kind":"bool""#.to_string()),
             Kind::String => (false, r#""kind":"string""#.to_string()),
             Kind::Vec(kind) => {
                 let (_, inner_doc) = kind.gen_doc_inner();
@@ -81,9 +83,9 @@ impl Kind {
                 let variants_doc = variants
                     .iter()
                     .enumerate()
-                    .map(|(i, v)| {
+                    .map(|(i, (v, n))| {
                         let (_, v_doc) = v.gen_doc_inner();
-                        format!(r#"{{"name":"{}",{}}}"#, i, v_doc)
+                        format!(r#"{{"name":"{}","alias":"{}",{}}}"#, i, n, v_doc)
                     })
                     .collect::<Vec<_>>();
                 (

@@ -897,7 +897,7 @@ pub enum Kind {
     Bool,
     String,
     Vec(Box<Kind>),
-    Enum { variants: Vec<Kind> },
+    Enum { variants: Vec<(Kind, String)> },
     Struct { fields: Vec<Field> },
     Tuple(Vec<Kind>),
     Nullable(Box<Kind>),

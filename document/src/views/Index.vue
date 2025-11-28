@@ -58,7 +58,7 @@ const client = new AFastClient({
     hook: async (header: {token: string}) => {
         console.log('hook:', header);
     },
-    call: async (buf) => {
+    call: async (buf: Uint8Array) => {
         console.log(buf);
         const response = await fetch('http://host/api', {
             method: 'POST',
@@ -100,7 +100,7 @@ const response = await client[.namespace1.namespace2].handle({});`
                     </NCard>
                 </NModal>
                 <NSpace justify="end">
-                    <NButton @click="showExample = true">Example</NButton>
+                    <NButton @click="showExample = true" secondary>Example</NButton>
                 </NSpace>
                 <br />
                 <div class="service" v-for="svc in services.services" @click="handleToService(svc)">

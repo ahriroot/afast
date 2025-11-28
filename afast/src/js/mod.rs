@@ -66,7 +66,7 @@ impl Kind {
                 let mut code = String::new();
                 code.push_str(&format!("_b1.pU32({}._type);", name));
                 code.push_str(&format!("switch({}._type){{", name));
-                for (i, variant) in variants.iter().enumerate() {
+                for (i, (variant, _)) in variants.iter().enumerate() {
                     code.push_str(&format!(
                         "case {}:{}break;",
                         i,
@@ -136,7 +136,7 @@ impl Kind {
                 code.push_str("let _type = _b2.rU32();");
                 code.push_str("switch(_type) {");
 
-                for (i, variant) in variants.iter().enumerate() {
+                for (i, (variant, _)) in variants.iter().enumerate() {
                     code.push_str(&format!(
                         "case {}: return {};",
                         i,
@@ -239,7 +239,7 @@ impl Kind {
             Kind::Vec(kind) => format!("Array<{}>", kind.gen_js_type()),
             Kind::Enum { variants } => {
                 let mut code = Vec::new();
-                for (index, variant) in variants.iter().enumerate() {
+                for (index, (variant, _)) in variants.iter().enumerate() {
                     let variant_type = match variant {
                         Kind::Struct { fields } => {
                             let mut fields_with_type = vec![format!("_type:{}", index)];
@@ -414,7 +414,7 @@ impl Kind {
                 let mut has_variant_validation = false;
                 let mut cases = Vec::new();
 
-                for (i, variant) in variants.iter().enumerate() {
+                for (i, (variant, _)) in variants.iter().enumerate() {
                     let variant_validation = match variant {
                         Kind::Struct { fields } => {
                             let mut field_validations = Vec::new();

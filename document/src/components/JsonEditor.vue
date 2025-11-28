@@ -77,15 +77,21 @@ const changeEnumVariant = (field: FieldDef | null, variant: Kind, index: number)
                         </NTooltip>
                     </td>
                     <td v-if="data[field.name] === null"></td>
-                    <td v-else-if="field.kind === 'number'">
+                    <td v-else-if="field.kind === 'number' || field.kind === 'f32' || field.kind === 'f64'">
                         <NInputNumber :value="data[field.name]" @update:value="val => data[field.name] = val ?? 0"
                             :min="field?.tag?.min?.value || undefined" :max="field?.tag?.max?.value || undefined"
                             :placeholder="field.name" />
                     </td>
+                    <td
+                        v-else-if="field.kind === 'i8' || field.kind === 'i16' || field.kind === 'i32' || field.kind === 'i64' || field.kind === 'i128' || field.kind === 'u8' || field.kind === 'u16' || field.kind === 'u32' || field.kind === 'u64' || field.kind === 'u128'">
+                        <NInputNumber :value="data[field.name]" @update:value="val => data[field.name] = val ?? 0"
+                            :min="field?.tag?.min?.value || undefined" :max="field?.tag?.max?.value || undefined"
+                            :precision="0" :placeholder="field.name" />
+                    </td>
                     <td v-else-if="field.kind === 'string'">
                         <NInput v-model:value="data[field.name]" :placeholder="field.name" />
                     </td>
-                    <td v-else-if="field.kind === 'boolean'">
+                    <td v-else-if="field.kind === 'bool'">
                         <NCheckbox type="checkbox" v-model:checked="data[field.name]" />
                     </td>
                     <td v-else-if="field.kind === 'object'">
@@ -98,12 +104,26 @@ const changeEnumVariant = (field: FieldDef | null, variant: Kind, index: number)
                         }" v-model:modelValue="data[field.name]"></JsonEditor>
                     </td>
                     <td v-else-if="field.kind === 'array'">
-                        <template v-if="field.items.kind === 'number'">
+                        <template
+                            v-if="field.items.kind === 'number' || field.items.kind === 'f32' || field.items.kind === 'f64'">
                             <div v-for="(_, index) in data[field.name]">
                                 <NInputGroup>
                                     <NInputNumber v-model:value="data[field.name][index]"
                                         :min="field?.tag?.min?.value || undefined"
                                         :max="field?.tag?.max?.value || undefined"
+                                        :placeholder="`${field.name} - ${index}`" />
+                                    <NButton @click="data[field.name].splice(index, 1)">-</NButton>
+                                </NInputGroup>
+                            </div>
+                            <NButton @click="data[field.name].push(0)">+</NButton>
+                        </template>
+                        <template
+                            v-if="field.items.kind === 'i8' || field.items.kind === 'i16' || field.items.kind === 'i32' || field.items.kind === 'i64' || field.items.kind === 'i128' || field.items.kind === 'u8' || field.items.kind === 'u16' || field.items.kind === 'u32' || field.items.kind === 'u64' || field.items.kind === 'u128'">
+                            <div v-for="(_, index) in data[field.name]">
+                                <NInputGroup>
+                                    <NInputNumber v-model:value="data[field.name][index]"
+                                        :min="field?.tag?.min?.value || undefined"
+                                        :max="field?.tag?.max?.value || undefined" :precision="0"
                                         :placeholder="`${field.name} - ${index}`" />
                                     <NButton @click="data[field.name].splice(index, 1)">-</NButton>
                                 </NInputGroup>
@@ -120,7 +140,7 @@ const changeEnumVariant = (field: FieldDef | null, variant: Kind, index: number)
                             </div>
                             <NButton @click="data[field.name].push('')">+</NButton>
                         </template>
-                        <template v-else-if="field.items.kind === 'boolean'">
+                        <template v-else-if="field.items.kind === 'bool'">
                             <div v-for="(_, index) in data[field.name]">
                                 <NInputGroup>
                                     <NCheckbox type="checkbox" v-model:checked="data[field.name][index]" />
@@ -149,7 +169,7 @@ const changeEnumVariant = (field: FieldDef | null, variant: Kind, index: number)
                             <NSpace>
                                 <NRadio v-for="(variant, index) in field.variants" :key="index" :value="index"
                                     @change="changeEnumVariant(field, variant, index)">
-                                    {{ index }}
+                                    {{ index }}&nbsp;{{ `(${variant.alias})` || '' }}
                                 </NRadio>
                             </NSpace>
                         </NRadioGroup>
@@ -174,7 +194,7 @@ const changeEnumVariant = (field: FieldDef | null, variant: Kind, index: number)
             <NSpace>
                 <NRadio v-for="(variant, index) in props.schema.variants" :key="index" :value="index"
                     @change="changeEnumVariant(null, variant, index)">
-                    {{ index }}
+                    {{ index }}&nbsp;{{ `(${variant.alias})` || '' }}
                 </NRadio>
             </NSpace>
         </NRadioGroup>
