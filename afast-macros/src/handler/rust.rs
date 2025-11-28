@@ -61,12 +61,100 @@ pub fn handler_struct(
                         });
                     }
                 } else if typ.starts_with("Option") {
+                    let inner_typ = typ.replace("Option<", "").replace(">", "").replace(" ", "");
+                    match inner_typ.as_str() {
+                        "String" => {
+                            // TODO: validate all conditions in one 'match Option {}'
+                            if let Some(msg) = tag.required {
+                                valideate_code.push(quote! {
+                                    if self.#ident.is_none() {
+                                        return Err(vec![#msg]);
+                                    }
+                                });
+                            }
+                            if let Some((min, msg)) = tag.min {
+                                valideate_code.push(quote! {
+                                    if let Some(v) = &self.#ident {
+                                        if v.len() < #min as usize {
+                                            return Err(vec![#msg]);
+                                        }
+                                    }
+                                });
+                            }
+                            if let Some((max, msg)) = tag.max {
+                                valideate_code.push(quote! {
+                                    if let Some(v) = &self.#ident {
+                                        if v.len() > #max as usize {
+                                            return Err(vec![#msg]);
+                                        }
+                                    }
+                                });
+                            }
+                        }
+                        "i8" | "i16" | "i32" | "i64" | "i128" | "isize" | "u8" | "u16" | "u32"
+                        | "u64" | "u128" | "usize" | "f32" | "f64" => {
+                            let inner_ty = syn::parse_str::<syn::Type>(&inner_typ).unwrap();
+                            if let Some(msg) = tag.required {
+                                valideate_code.push(quote! {
+                                    if self.#ident.is_none() {
+                                        return Err(vec![#msg]);
+                                    }
+                                });
+                            }
+                            if let Some((min, msg)) = tag.min {
+                                valideate_code.push(quote! {
+                                    if let Some(v) = self.#ident {
+                                        if v < #min as #inner_ty {
+                                            return Err(vec![#msg]);
+                                        }
+                                    }
+                                });
+                            }
+                            if let Some((max, msg)) = tag.max {
+                                valideate_code.push(quote! {
+                                    if let Some(v) = self.#ident {
+                                        if v > #max as #inner_ty {
+                                            return Err(vec![#msg]);
+                                        }
+                                    }
+                                });
+                            }
+                        }
+                        "bool" => {
+                            if let Some(msg) = tag.required {
+                                valideate_code.push(quote! {
+                                    if self.#ident.is_none() {
+                                        return Err(vec![#msg]);
+                                    }
+                                });
+                            }
+                        }
+                        _ => {
+                            valideate_code.push(quote! {
+                                self.#ident.validate()?;
+                            });
+                        }
+                    }
                 } else {
                     match typ.as_str() {
                         "String" => {
                             if let Some(msg) = tag.required {
                                 valideate_code.push(quote! {
                                     if self.#ident.is_empty() {
+                                        return Err(vec![#msg]);
+                                    }
+                                });
+                            }
+                            if let Some((min, msg)) = tag.min {
+                                valideate_code.push(quote! {
+                                    if self.#ident.len() < #min as usize {
+                                        return Err(vec![#msg]);
+                                    }
+                                });
+                            }
+                            if let Some((max, msg)) = tag.max {
+                                valideate_code.push(quote! {
+                                    if self.#ident.len() > #max as usize {
                                         return Err(vec![#msg]);
                                     }
                                 });

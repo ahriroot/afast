@@ -83,14 +83,11 @@ use afast::{AFast, AFastData, AFastKind, Error, handler, middleware, register};
 
 #[derive(Debug, Clone, AFastData, AFastKind)]
 enum Sex {
-    Other,
-    Custom(#[validate(desc("Custom user sex 0"))] i32, String),
-    Male {
-        #[validate(desc("Male user id"))]
-        id: i64,
-    },
-    Female {
-        #[validate(desc("Female user name"))]
+    Male,
+    Female,
+    Other(#[validate(desc("Other sex id"))] i64),
+    Custom {
+        #[validate(desc("Custom sex name"))]
         name: String,
     },
 }
@@ -113,9 +110,11 @@ struct Request {
     #[validate(desc("User tags"))]
     tags: Vec<String>,
     #[validate(desc("User gender"))]
-    gender: Option<bool>,
+    superuser: Option<bool>,
     #[validate(desc("User sex"))]
     sex: Sex,
+    #[validate(desc("User number"))]
+    number: f64,
 }
 
 #[derive(Debug, Clone, AFastData, AFastKind)]
@@ -132,7 +131,7 @@ pub struct Response {
     age: u32,
     hobbies: Vec<Hobby>,
     tags: Vec<String>,
-    gender: Option<bool>,
+    superuser: Option<bool>,
 }
 
 #[handler(desc("Get user information"), ns("api.user"))]
@@ -143,7 +142,7 @@ async fn get_user(_state: String, _header: Header, req: Request) -> Result<Respo
         age: req.age,
         hobbies: req.hobbies.clone(),
         tags: req.tags.clone(),
-        gender: req.gender,
+        superuser: req.superuser,
         sex: req.sex.clone(),
     })
 }

@@ -2,6 +2,7 @@
 import { onBeforeMount, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NCode, NInput, NButton, NCollapse, NCollapseItem, NScrollbar, NSpace, useMessage, useNotification, NCheckbox, NCard, NInputGroup, NModal, NTabs, NTabPane } from 'naive-ui'
+import { Menu } from '@vicons/ionicons5'
 import hljs from 'highlight.js/lib/core'
 import json from 'highlight.js/lib/languages/json'
 import JsonEditor from '../components/JsonEditor.vue'
@@ -234,18 +235,29 @@ const response = await client[.namespace1.namespace2].handle({});`
                         </NTabPane>
                     </NTabs>
                 </NModal>
-                <NSpace align="center" justify="end">
-                    <NInput v-model:value="filter" placeholder="Filter name / desc / namespace" style="width: 260px;" />
-                    <NButton @click="showExample = true" secondary>Example</NButton>
-                    <NButton v-show="!editAuthorization" @click="handleEditAuthorization" secondary>
-                        Authorization
-                    </NButton>
-                    <NInputGroup v-show="editAuthorization">
-                        <NInput v-model:value="authorization" @click="(e) => e.stopPropagation()" style="width: 460px;" />
-                        <NButton @click="handleSaveAuthorization" secondary>
-                            Save
+                <NSpace align="center" justify="space-between">
+                    <NSpace align="center" justify="end">
+                        <NButton @click="handleExpandedNames([])" secondary>
+                            <template #icon>
+                                <Menu />
+                            </template>
                         </NButton>
-                    </NInputGroup>
+                    </NSpace>
+                    <NSpace align="center" justify="end">
+                        <NInput v-model:value="filter" placeholder="Filter name / desc / namespace"
+                            style="width: 260px;" />
+                        <NButton @click="showExample = true" secondary>Example</NButton>
+                        <NButton v-show="!editAuthorization" @click="handleEditAuthorization" secondary>
+                            Authorization
+                        </NButton>
+                        <NInputGroup v-show="editAuthorization">
+                            <NInput v-model:value="authorization" @click="(e) => e.stopPropagation()"
+                                style="width: 460px;" />
+                            <NButton @click="handleSaveAuthorization" secondary>
+                                Save
+                            </NButton>
+                        </NInputGroup>
+                    </NSpace>
                 </NSpace>
                 <NCollapse :expanded-names="expandedNames" :on-update:expanded-names="handleExpandedNames">
                     <NCollapseItem v-for="(i, index) in services" :title="i.api.desc || '-'" :name="index"
