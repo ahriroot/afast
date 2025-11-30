@@ -34,8 +34,6 @@ struct Request {
     sex: Sex,
     #[validate(desc("User number"))]
     number: f64,
-    #[validate(required("o is required"), min(1, "o must be at least 1"), max(10, "o must be at most 10"))]
-    o: Option<String>
 }
 
 #[derive(Debug, Clone, AFastData, AFastKind)]
