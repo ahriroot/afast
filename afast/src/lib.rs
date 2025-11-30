@@ -209,6 +209,8 @@ mod doc;
 mod error;
 #[cfg(feature = "js")]
 mod js;
+#[cfg(feature = "swagger")]
+mod swagger;
 #[cfg(feature = "ts")]
 mod ts;
 pub use error::Error;
@@ -805,6 +807,60 @@ where
                                 "application/json; charset=utf-8",
                             )
                             .body(http_body_util::Full::new(axum::body::Bytes::from(code)))
+                            .unwrap()
+                    },
+                ),
+            );
+
+            #[cfg(feature = "swagger")]
+            let app = app.route(
+                "/swagger/{service}",
+                axum::routing::get(
+                    move |axum::Extension(codes): axum::Extension<
+                        std::collections::HashMap<String, String>,
+                    >,
+                          axum::Extension(services): axum::Extension<
+                        std::collections::HashSet<(String, String, usize)>,
+                    >,
+                          axum::extract::Path(service): axum::extract::Path<
+                        String
+                    >| async move {
+                        // Get service description
+                        let service_desc = services
+                            .iter()
+                            .find(|(name, _, _)| name == &service)
+                            .map(|(_, desc, _)| desc.clone())
+                            .unwrap_or_else(|| "".to_string());
+
+                        // Get documentation JSON
+                        let doc_json = if let Some(code) = codes.get(&format!("doc/{}", service)) {
+                            code.to_string()
+                        } else {
+                            return axum::response::Response::builder()
+                                .status(404)
+                                .body(http_body_util::Full::new(axum::body::Bytes::from(
+                                    "404 Not Found",
+                                )))
+                                .unwrap();
+                        };
+
+                        // Generate OpenAPI spec
+                        // Try to get base URL from request, fallback to localhost
+                        let base_url = "http://localhost:8081"; // Default fallback
+                        let openapi_json = swagger::gen_swagger_service(
+                            &service,
+                            &service_desc,
+                            base_url,
+                            &doc_json,
+                        );
+
+                        axum::response::Response::builder()
+                            .status(200)
+                            .header(
+                                axum::http::header::CONTENT_TYPE,
+                                "application/json; charset=utf-8",
+                            )
+                            .body(http_body_util::Full::new(axum::body::Bytes::from(openapi_json)))
                             .unwrap()
                     },
                 ),

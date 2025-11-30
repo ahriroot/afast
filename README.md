@@ -17,6 +17,7 @@ You can enable the following features in your `Cargo.toml`:
   - `/code/{service}/{lang}` - Client code (feature flag `js`|`ts` ...)
   - `/doc` - Service list (feature flag `doc`)
   - `/doc/{service}` - Handler defintions and documentation (feature flag `doc`)
+  - `/swagger/{service}` - OpenAPI/Swagger specification (feature flag `swagger`)
 - `ws` - enable WebSocket support
   - `/ws` - WebSocket endpoint
 - `tcp` - enable TCP support
@@ -24,6 +25,7 @@ You can enable the following features in your `Cargo.toml`:
 - `js` - enable JavaScript client generation (auto enabled `code`)
 - `ts` - enable TypeScript client generation (auto enabled `code`)
 - `code` - enable code generation
+- `swagger` - enable Swagger/OpenAPI documentation generation (requires `doc`)
 
 **Note on TCP usage:**  
 

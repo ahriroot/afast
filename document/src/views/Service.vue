@@ -215,6 +215,13 @@ const client = new AFastClient({
 });
 
 const response = await client[.namespace1.namespace2].handle({});`
+
+const openSwaggerUI = () => {
+    const serviceName = route.params.name as string
+    const swaggerUrl = `${baseURL}/swagger/${serviceName}`
+    // Open Swagger UI using swagger-ui web service
+    window.open(`https://petstore.swagger.io/?url=${encodeURIComponent(swaggerUrl)}`, '_blank')
+}
 </script>
 
 <template>
@@ -247,6 +254,7 @@ const response = await client[.namespace1.namespace2].handle({});`
                         <NInput v-model:value="filter" placeholder="Filter name / desc / namespace"
                             style="width: 260px;" />
                         <NButton @click="showExample = true" secondary>Example</NButton>
+                        <NButton @click="openSwaggerUI" secondary>Swagger UI</NButton>
                         <NButton v-show="!editAuthorization" @click="handleEditAuthorization" secondary>
                             Authorization
                         </NButton>

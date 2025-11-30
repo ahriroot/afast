@@ -23,6 +23,7 @@ http-body-util = { version = "0.1", features = ["full"], optional = true }
 tower-http = { version = "0.6", features = ["cors"], optional = true }
 include_dir = { version = "0.7", optional = true }
 mime_guess = { version = "2.0", optional = true }
+serde_json = { version = "1.0", optional = true }
 
 [features]
 default = ["http"]
@@ -33,4 +34,5 @@ code = ["afast-macros/code"]
 js = ["afast-macros/js", "code"]
 ts = ["afast-macros/ts", "code"]
 doc = ["afast-macros/doc", "code", "tower-http/fs", "include_dir", "mime_guess"]
+swagger = ["doc", "serde_json"]
 trace = ["backtrace"]
