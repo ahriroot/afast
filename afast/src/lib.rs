@@ -1,16 +1,16 @@
 //! # AFast
-//! 
+//!
 //! **AFast** is a high-performance asynchronous Rust backend framework designed
 //! to simplify building networked applications. It supports multiple protocols
 //! via feature flags and provides automatic code generation for clients
 //! (TypeScript and JavaScript), API documentation, and field validation.
-//! 
+//!
 //! ## Instructions
-//! 
+//!
 //! ### Supported Protocol Features
-//! 
+//!
 //! You can enable the following features in your `Cargo.toml`:
-//! 
+//!
 //! - `http` - enable HTTP support
 //!   - `/` - Document path (feature flag `doc`)
 //!   - `/api` - HTTP API endpoints
@@ -24,18 +24,18 @@
 //! - `js` - enable JavaScript client generation (auto enabled `code`)
 //! - `ts` - enable TypeScript client generation (auto enabled `code`)
 //! - `code` - enable code generation
-//! 
+//!
 //! **Note on TCP usage:**  
-//! 
+//!
 //! If the `tcp` feature is enabled, the `AFast::serve` method takes two arguments:
-//! 
+//!
 //! 1. The TCP address to listen on (`"127.0.0.1:8080"`).  
 //! 2. The HTTP/WS address (`"127.0.0.1:8081"`) for web clients and generated JS/TS clients.
-//! 
+//!
 //! This allows you to run TCP and HTTP/WS servers simultaneously in the same application.
-//! 
+//!
 //! ### Key Features
-//! 
+//!
 //! - **`handler` Macro**: Declare HTTP endpoints with minimal boilerplate
 //!   - Automatic TypeScript/JavaScript client generation
 //!   - Namespace support for organized API structure (`ns("api.v1.user")`)
@@ -43,44 +43,44 @@
 //! - Automatic field validation with custom rules
 //! - Async handler functions with state management
 //! - Flexible multi-protocol support: HTTP, WS, TCP
-//! 
+//!
 //! #### Handler Macro Overview
-//! 
+//!
 //! The `#[handler]` attribute macro transforms async functions into full-featured API endpoints:
-//! 
+//!
 //! ```rust
 //! #[handler(desc("Get user information"), ns("api.v1.user"))]
 //! async fn get_user(state: String, header: Header, req: Request) -> Result<Response, Error> {
 //!     // Your business logic
 //! }
 //! ```
-//! 
+//!
 //! **Macro Parameters:**
-//! 
+//!
 //! - `desc("description")` - API description for documentation
 //! - `ns("api.v1.user")` - Namespace for nested JS client generation
-//! 
+//!
 //! **Generated Output:**
-//! 
+//!
 //! - Type-safe HTTP endpoints
 //! - Nested JavaScript client structure
 //! - TypeScript type definitions  
 //! - OpenAPI documentation
-//! 
+//!
 //! ### Upcoming Features / Development Plan
-//! 
+//!
 //! - Nested structure validation for complex types
 //! - Enable or disable js / ts / document by feature flags
 //! - Add command for generating client code
 //! - Generate client code for additional languages: Java, Kotlin, C#, Rust, etc.
 //! - Improved code generation templates for easier integration
 //! - Enhanced error handling and validation reporting
-//! 
+//!
 //! ## Example
-//! 
+//!
 //! ```rust
 //! use afast::{AFast, AFastData, AFastKind, Error, handler, middleware, register};
-//! 
+//!
 //! #[derive(Debug, Clone, AFastData, AFastKind)]
 //! enum Sex {
 //!     Other,
@@ -94,7 +94,7 @@
 //!         name: String,
 //!     },
 //! }
-//! 
+//!
 //! #[derive(Debug, Clone, AFastData, AFastKind)]
 //! struct Request {
 //!     #[validate(desc("User ID"))]
@@ -117,13 +117,13 @@
 //!     #[validate(desc("User sex"))]
 //!     sex: Sex,
 //! }
-//! 
+//!
 //! #[derive(Debug, Clone, AFastData, AFastKind)]
 //! struct Hobby {
 //!     id: i64,
 //!     name: String,
 //! }
-//! 
+//!
 //! #[derive(Debug, AFastData, AFastKind)]
 //! pub struct Response {
 //!     sex: Sex,
@@ -134,7 +134,7 @@
 //!     tags: Vec<String>,
 //!     gender: Option<bool>,
 //! }
-//! 
+//!
 //! #[handler(desc("Get user information"), ns("api.user"))]
 //! async fn get_user(_state: String, _header: Header, req: Request) -> Result<Response, Error> {
 //!     Ok(Response {
@@ -147,18 +147,18 @@
 //!         sex: req.sex.clone(),
 //!     })
 //! }
-//! 
+//!
 //! #[derive(Debug, AFastData, AFastKind)]
 //! struct Req2 {
 //!     id: i64,
 //! }
-//! 
+//!
 //! #[derive(Debug, AFastData, AFastKind)]
 //! struct Resp2 {
 //!     id: i64,
 //!     name: String,
 //! }
-//! 
+//!
 //! #[handler(desc("Get user by id"), ns("api"))]
 //! async fn get_id(_state: String, _header: Header, req: Req2) -> Result<Resp2, Error> {
 //!     Ok(Resp2 {
@@ -166,26 +166,26 @@
 //!         name: "John".to_string(),
 //!     })
 //! }
-//! 
+//!
 //! #[derive(Debug, Clone, AFastData, AFastKind)]
 //! struct Header {
 //!     token: String,
 //! }
-//! 
+//!
 //! #[middleware]
 //! async fn auth(_state: String, header: Header) -> Result<Header, Error> {
 //!     println!("Token: {:?}", header);
 //!     Ok(header)
 //! }
-//! 
+//!
 //! #[tokio::main]
 //! async fn main() {
 //!     let state = "".to_string();
-//! 
+//!
 //!     let server = AFast::<String, Header>::new(state)
 //!         .service("user", "User service", register! { get_user, get_id })
 //!         .middleware(auth);
-//! 
+//!
 //!     server
 //!         .serve(
 //!             #[cfg(feature = "tcp")]
@@ -197,7 +197,7 @@
 //!         .unwrap();
 //! }
 //! ```
-//! 
+//!
 
 use std::sync::Arc;
 
@@ -558,160 +558,253 @@ where
 
             let app = axum::Router::new();
 
-            // WebSocket route /ws
-            #[cfg(feature = "ws")]
-            let app = app.route(
-                "/ws",
-                axum::routing::any(
-                    move |axum::Extension((state, handlers)): axum::Extension<(
-                        T,
-                        Arc<Vec<HandlerGeneric<T, H>>>,
-                    )>,
-                          axum::Extension(mw): axum::Extension<Arc<Box<Middleware<T, H>>>>,
-                          ws: axum::extract::ws::WebSocketUpgrade| async move {
-                        ws.on_upgrade(|mut ws| async move {
-                            loop {
-                                let data = ws.recv().await.unwrap().unwrap();
-                                if let axum::extract::ws::Message::Binary(body) = data {
-                                    if body.len() < 8 {
-                                        continue;
+            let addr = std::net::SocketAddr::from(([127, 0, 0, 1], 3000));
+            let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+            loop {
+                let (stream, _) = listener.accept().await.unwrap();
+                let io = hyper_util::rt::TokioIo::new(stream);
+                let state = state.clone();
+                let mw = Arc::clone(&self.middleware);
+                let handlers = Arc::clone(&self.handlers);
+
+                tokio::spawn(async move {
+                    let state = state.clone();
+                    let mw = Arc::clone(&mw);
+                    let handlers = Arc::clone(&handlers);
+                    if let Err(err) = hyper::server::conn::http2::Builder::new(
+                        hyper_util::rt::TokioExecutor::new(),
+                    )
+                    .serve_connection(
+                        io,
+                        hyper::service::service_fn(|req: hyper::Request<_>| {
+                            let state = state.clone();
+                            let mw = Arc::clone(&mw);
+                            let handlers = Arc::clone(&handlers);
+                            async move {
+                                let path = req.uri().path();
+                                let method = req.method();
+                                #[cfg(feature = "ws")]
+                                let upgrade = req
+                                    .headers()
+                                    .get("Upgrade")
+                                    .map(|v| v == "websocket")
+                                    .unwrap_or(false);
+                                #[cfg(feature = "ws")]
+                                let sec_ws_key = req.headers().contains_key("Sec-WebSocket-Key");
+                                #[cfg(feature = "ws")]
+                                if path == "/ws"
+                                    && method == hyper::Method::GET
+                                    && upgrade
+                                    && sec_ws_key
+                                {
+                                    let upgraded = hyper::upgrade::on(req).await.unwrap();
+                                    let stream = hyper_util::rt::TokioIo::new(upgraded);
+                                    println!("WebSocket client connected!");
+
+                                    let mut ws =
+                                        tokio_tungstenite::WebSocketStream::from_raw_socket(
+                                            stream,
+                                            tokio_tungstenite::tungstenite::protocol::Role::Server,
+                                            None,
+                                        )
+                                        .await;
+
+                                    while let Some(msg) =
+                                        futures_util::StreamExt::next(&mut ws).await
+                                    {
+                                        let msg = msg.unwrap();
+
+                                        match msg {
+                                            tokio_tungstenite::tungstenite::Message::Binary(
+                                                body,
+                                            ) => {
+                                                if body.len() < 8 {
+                                                    continue;
+                                                }
+
+                                                let (header, size) = match H::from_bytes(&body) {
+                                                    Ok(h) => h,
+                                                    Err(_) => {
+                                                        continue;
+                                                    }
+                                                };
+
+                                                let seq: usize = u32::from_be_bytes([
+                                                    body[size + 0],
+                                                    body[size + 1],
+                                                    body[size + 2],
+                                                    body[size + 3],
+                                                ])
+                                                    as usize;
+                                                let id: usize = u32::from_be_bytes([
+                                                    body[size + 4],
+                                                    body[size + 5],
+                                                    body[size + 6],
+                                                    body[size + 7],
+                                                ])
+                                                    as usize;
+
+                                                let handler = &handlers[id];
+
+                                                let fut = mw(state.clone(), header);
+                                                let header = match fut.await {
+                                                    Ok(r) => r,
+                                                    Err(_) => {
+                                                        continue;
+                                                    }
+                                                };
+                                                let h = header.to_bytes();
+                                                let fut = (handler.func)(
+                                                    state.clone(),
+                                                    header,
+                                                    &body[size + 8..],
+                                                );
+                                                let res = fut.await.unwrap();
+                                                let mut final_res =
+                                                    Vec::with_capacity(8 + res.len() + h.len());
+                                                final_res.extend_from_slice(&seq.to_be_bytes());
+                                                final_res.extend_from_slice(&id.to_be_bytes());
+                                                final_res.extend_from_slice(&h);
+                                                final_res.extend_from_slice(&res);
+                                                futures_util::SinkExt::send(
+                                                    &mut ws,
+                                                    tokio_tungstenite::tungstenite::Message::Binary(
+                                                        final_res.into(),
+                                                    ),
+                                                )
+                                                .await
+                                                .unwrap();
+                                            }
+                                            tokio_tungstenite::tungstenite::Message::Close(_) => {
+                                                println!("Client disconnected");
+                                                break;
+                                            }
+                                            _ => {}
+                                        }
                                     }
 
-                                    let (header, size) = match H::from_bytes(&body) {
+                                    return Ok::<_, std::convert::Infallible>(
+                                        hyper::Response::builder()
+                                            .status(400)
+                                            .body(http_body_util::Full::<hyper::body::Bytes>::new(
+                                                "".into(),
+                                            ))
+                                            .unwrap(),
+                                    );
+                                }
+
+                                if method != hyper::Method::POST || path != "/api" {
+                                    let body = http_body_util::BodyExt::collect(req)
+                                        .await
+                                        .unwrap()
+                                        .to_bytes();
+                                    let (header, size) = match H::from_bytes(&body[..]) {
                                         Ok(h) => h,
-                                        Err(_) => {
-                                            continue;
+                                        Err(e) => {
+                                            return Ok::<_, std::convert::Infallible>(
+                                                hyper::Response::builder()
+                                                    .status(400)
+                                                    .body(http_body_util::Full::new(
+                                                        e.to_string().into(),
+                                                    ))
+                                                    .unwrap(),
+                                            );
                                         }
                                     };
 
-                                    let seq: usize = u32::from_be_bytes([
+                                    if body.len() < size + 4 {
+                                        return Ok::<_, std::convert::Infallible>(
+                                            hyper::Response::builder()
+                                                .status(400)
+                                                .body(http_body_util::Full::new(
+                                                    "Invalid request".into(),
+                                                ))
+                                                .unwrap(),
+                                        );
+                                    }
+
+                                    let id = u32::from_be_bytes([
                                         body[size + 0],
                                         body[size + 1],
                                         body[size + 2],
                                         body[size + 3],
-                                    ])
-                                        as usize;
-                                    let id: usize = u32::from_be_bytes([
-                                        body[size + 4],
-                                        body[size + 5],
-                                        body[size + 6],
-                                        body[size + 7],
-                                    ]) as usize;
-
-                                    let handler = &handlers[id];
+                                    ]);
+                                    let handler = &handlers[id as usize];
 
                                     let fut = mw(state.clone(), header);
                                     let header = match fut.await {
                                         Ok(r) => r,
-                                        Err(_) => {
-                                            continue;
+                                        Err(e) => {
+                                            return Ok::<_, std::convert::Infallible>(
+                                                hyper::Response::builder()
+                                                    .status(400)
+                                                    .body(http_body_util::Full::new(
+                                                        e.to_string().into(),
+                                                    ))
+                                                    .unwrap(),
+                                            );
                                         }
                                     };
                                     let h = header.to_bytes();
                                     let fut =
-                                        (handler.func)(state.clone(), header, &body[size + 8..]);
-                                    let res = fut.await.unwrap();
-                                    let mut final_res = Vec::with_capacity(8 + res.len() + h.len());
-                                    final_res.extend_from_slice(&seq.to_be_bytes());
-                                    final_res.extend_from_slice(&id.to_be_bytes());
-                                    final_res.extend_from_slice(&h);
-                                    final_res.extend_from_slice(&res);
-                                    ws.send(axum::extract::ws::Message::Binary(final_res.into()))
-                                        .await
-                                        .unwrap();
-                                }
-                            }
-                        })
-                    },
-                ),
-            );
-
-            // HTTP route /api
-            #[cfg(feature = "http")]
-            let app = app.route(
-                "/api",
-                axum::routing::post(
-                    move |axum::Extension((state, handlers)): axum::Extension<(
-                        T,
-                        Arc<Vec<HandlerGeneric<T, H>>>,
-                    )>,
-                          axum::Extension(mw): axum::Extension<Arc<Box<Middleware<T, H>>>>,
-                          body: axum::body::Bytes| async move {
-                        let (header, size) = match H::from_bytes(&body[..]) {
-                            Ok(h) => h,
-                            Err(e) => {
-                                return axum::response::Response::builder()
-                                    .status(400)
-                                    .body(http_body_util::Full::new(axum::body::Bytes::from(
-                                        e.to_string(),
-                                    )))
-                                    .unwrap();
-                            }
-                        };
-
-                        if body.len() < size + 4 {
-                            return axum::response::Response::builder()
-                                .status(400)
-                                .body(http_body_util::Full::new(axum::body::Bytes::from(
-                                    "Invalid request",
-                                )))
-                                .unwrap();
-                        }
-
-                        let id = u32::from_be_bytes([
-                            body[size + 0],
-                            body[size + 1],
-                            body[size + 2],
-                            body[size + 3],
-                        ]);
-                        let handler = &handlers[id as usize];
-
-                        let fut = mw(state.clone(), header);
-                        let header = match fut.await {
-                            Ok(r) => r,
-                            Err(e) => {
-                                return axum::response::Response::builder()
-                                    .status(400)
-                                    .body(http_body_util::Full::new(axum::body::Bytes::from(
-                                        e.to_string(),
-                                    )))
-                                    .unwrap();
-                            }
-                        };
-                        let h = header.to_bytes();
-                        let fut = (handler.func)(state.clone(), header, &body[size + 4..]);
-                        match fut.await {
-                            Ok(res) => {
-                                let mut final_res = Vec::with_capacity(4 + res.len() + h.len());
-                                final_res.extend_from_slice(&id.to_be_bytes());
-                                final_res.extend_from_slice(&h);
-                                final_res.extend_from_slice(&res);
-                                axum::response::Response::builder()
-                                    .status(200)
-                                    .body(http_body_util::Full::new(axum::body::Bytes::from(
-                                        final_res,
-                                    )))
-                                    .unwrap()
-                            }
-                            Err(e) => {
-                                let (c, m) = match e {
-                                    Error::DecodeError => (400, "Invalid request".to_string()),
-                                    Error::EncodeError => (500, "Invalid response".to_string()),
-                                    Error::ClientError => (400, "Bad request".to_string()),
-                                    Error::ServerError => {
-                                        (500, "Internal Server Error".to_string())
+                                        (handler.func)(state.clone(), header, &body[size + 4..]);
+                                    match fut.await {
+                                        Ok(res) => {
+                                            let mut final_res =
+                                                Vec::with_capacity(4 + res.len() + h.len());
+                                            final_res.extend_from_slice(&id.to_be_bytes());
+                                            final_res.extend_from_slice(&h);
+                                            final_res.extend_from_slice(&res);
+                                            return Ok::<_, std::convert::Infallible>(
+                                                hyper::Response::builder()
+                                                    .status(200)
+                                                    .body(http_body_util::Full::new(
+                                                        final_res.into(),
+                                                    ))
+                                                    .unwrap(),
+                                            );
+                                        }
+                                        Err(e) => {
+                                            let (c, m) = match e {
+                                                Error::DecodeError => {
+                                                    (400, "Invalid request".to_string())
+                                                }
+                                                Error::EncodeError => {
+                                                    (500, "Invalid response".to_string())
+                                                }
+                                                Error::ClientError => {
+                                                    (400, "Bad request".to_string())
+                                                }
+                                                Error::ServerError => {
+                                                    (500, "Internal Server Error".to_string())
+                                                }
+                                                Error::CustomError(c, m) => (c, m.to_string()),
+                                            };
+                                            return Ok::<_, std::convert::Infallible>(
+                                                hyper::Response::builder()
+                                                    .status(c)
+                                                    .body(http_body_util::Full::new(m.into()))
+                                                    .unwrap(),
+                                            );
+                                        }
                                     }
-                                    Error::CustomError(c, m) => (c, m.to_string()),
-                                };
-                                axum::response::Response::builder()
-                                    .status(c)
-                                    .body(http_body_util::Full::new(axum::body::Bytes::from(m)))
-                                    .unwrap()
+                                }
+
+                                return Ok::<_, std::convert::Infallible>(
+                                    hyper::Response::builder()
+                                        .status(404)
+                                        .body(http_body_util::Full::new("404 Not Found".into()))
+                                        .unwrap(),
+                                );
                             }
-                        }
-                    },
-                ),
-            );
+                        }),
+                    )
+                    .await
+                    {
+                        eprintln!("Error serving connection: {:?}", err);
+                    }
+                });
+            }
 
             #[cfg(feature = "code")]
             let app = app.route(
