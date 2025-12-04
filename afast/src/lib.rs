@@ -487,15 +487,18 @@ where
             #[cfg(not(any(feature = "http", feature = "ws")))]
             {
                 // Blocking TCP loop if HTTP/WS is disabled
+                let mw = Arc::clone(&self.middleware);
                 loop {
                     let (mut socket, _) = listener.accept().await.unwrap();
 
+                    // Read 4-byte length prefix
                     let mut body = [0u8; 4];
                     tokio::io::AsyncReadExt::read_exact(&mut socket, &mut body)
                         .await
                         .unwrap();
                     let len = u32::from_be_bytes(body) as usize;
 
+                    // Read message body
                     let mut body = vec![0u8; len];
                     tokio::io::AsyncReadExt::read_exact(&mut socket, &mut body)
                         .await
@@ -525,20 +528,23 @@ where
                     // Call handler
                     let handler = &handlers[id];
 
-                    let fut = (handler.middleware)(state.clone(), header.clone());
-                    match fut.await {
-                        Ok(_) => {}
+                    let fut = mw(state.clone(), header);
+                    let header = match fut.await {
+                        Ok(r) => r,
                         Err(_) => {
                             continue;
                         }
-                    }
+                    };
+                    let h = header.to_bytes();
                     let fut = (handler.func)(state.clone(), header, &body[size + 8..]);
                     let res = fut.await.unwrap();
 
-                    let mut final_res = Vec::with_capacity(12 + res.len());
-                    final_res.extend_from_slice(&(len + 8).to_be_bytes());
+                    // Build response: len + seq + id + response
+                    let mut final_res = Vec::with_capacity(12 + res.len() + h.len());
+                    final_res.extend_from_slice(&final_res.len().to_be_bytes());
                     final_res.extend_from_slice(&seq.to_be_bytes());
                     final_res.extend_from_slice(&id.to_be_bytes());
+                    final_res.extend_from_slice(&h);
                     final_res.extend_from_slice(&res);
 
                     tokio::io::AsyncWriteExt::write_all(&mut socket, &final_res)
@@ -548,18 +554,16 @@ where
             }
         }
 
-        #[cfg(any(feature = "http", feature = "ws"))]
+        #[cfg(any(feature = "http", feature = "ws", feature = "code", feature = "doc"))]
         {
+            #[cfg(feature = "code")]
+            let codes = Arc::new(self.codes.clone());
+
+            #[cfg(any(feature = "http", feature = "ws"))]
             let state = self.state.clone();
-            let handlers = Arc::clone(&self.handlers);
 
-            // TCP listener for HTTP/WS
+            #[cfg(any(feature = "http", feature = "ws"))]
             let listener = tokio::net::TcpListener::bind(addr_http).await.unwrap();
-
-            let app = axum::Router::new();
-
-            let addr = std::net::SocketAddr::from(([127, 0, 0, 1], 3000));
-            let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
             loop {
                 let (stream, _) = listener.accept().await.unwrap();
                 let io = hyper_util::rt::TokioIo::new(stream);
@@ -567,12 +571,21 @@ where
                 let mw = Arc::clone(&self.middleware);
                 let handlers = Arc::clone(&self.handlers);
 
+                #[cfg(feature = "code")]
+                let codes = Arc::clone(&codes);
+                #[cfg(feature = "doc")]
+                let services = Arc::new(self.services.clone());
+
                 tokio::spawn(async move {
                     let state = state.clone();
                     let mw = Arc::clone(&mw);
                     let handlers = Arc::clone(&handlers);
-                    if let Err(err) = hyper::server::conn::http2::Builder::new(
-                        hyper_util::rt::TokioExecutor::new(),
+                    #[cfg(feature = "code")]
+                    let codes = Arc::clone(&codes);
+                    #[cfg(feature = "doc")]
+                    let services = Arc::clone(&services);
+                    if let Err(err) = hyper::server::conn::http1::Builder::new(
+                        // hyper_util::rt::TokioExecutor::new(),
                     )
                     .serve_connection(
                         io,
@@ -580,6 +593,11 @@ where
                             let state = state.clone();
                             let mw = Arc::clone(&mw);
                             let handlers = Arc::clone(&handlers);
+                            #[cfg(feature = "code")]
+                            let codes = Arc::clone(&codes);
+                            #[cfg(feature = "doc")]
+                            let services = Arc::clone(&services);
+
                             async move {
                                 let path = req.uri().path();
                                 let method = req.method();
@@ -693,7 +711,8 @@ where
                                     );
                                 }
 
-                                if method != hyper::Method::POST || path != "/api" {
+                                #[cfg(feature = "http")]
+                                if method == hyper::Method::POST && path == "/api" {
                                     let body = http_body_util::BodyExt::collect(req)
                                         .await
                                         .unwrap()
@@ -704,7 +723,7 @@ where
                                             return Ok::<_, std::convert::Infallible>(
                                                 hyper::Response::builder()
                                                     .status(400)
-                                                    .body(http_body_util::Full::new(
+                                                    .body(http_body_util::Full::<hyper::body::Bytes>::new(
                                                         e.to_string().into(),
                                                     ))
                                                     .unwrap(),
@@ -716,7 +735,7 @@ where
                                         return Ok::<_, std::convert::Infallible>(
                                             hyper::Response::builder()
                                                 .status(400)
-                                                .body(http_body_util::Full::new(
+                                                .body(http_body_util::Full::<hyper::body::Bytes>::new(
                                                     "Invalid request".into(),
                                                 ))
                                                 .unwrap(),
@@ -738,7 +757,7 @@ where
                                             return Ok::<_, std::convert::Infallible>(
                                                 hyper::Response::builder()
                                                     .status(400)
-                                                    .body(http_body_util::Full::new(
+                                                    .body(http_body_util::Full::<hyper::body::Bytes>::new(
                                                         e.to_string().into(),
                                                     ))
                                                     .unwrap(),
@@ -758,7 +777,7 @@ where
                                             return Ok::<_, std::convert::Infallible>(
                                                 hyper::Response::builder()
                                                     .status(200)
-                                                    .body(http_body_util::Full::new(
+                                                    .body(http_body_util::Full::<hyper::body::Bytes>::new(
                                                         final_res.into(),
                                                     ))
                                                     .unwrap(),
@@ -783,17 +802,189 @@ where
                                             return Ok::<_, std::convert::Infallible>(
                                                 hyper::Response::builder()
                                                     .status(c)
-                                                    .body(http_body_util::Full::new(m.into()))
+                                                    .body(http_body_util::Full::<hyper::body::Bytes>::new(m.into()))
                                                     .unwrap(),
                                             );
                                         }
                                     }
                                 }
 
+                                #[cfg(any(feature = "code", feature = "doc"))]
+                                if method == hyper::Method::GET {
+                                    #[cfg(feature = "code")]
+                                    if path.starts_with("/code") {
+                                        let parts: Vec<&str> = path
+                                            .trim_start_matches('/')
+                                            .trim_end_matches('/')
+                                            .split('/')
+                                            .collect();
+                                        let len = parts.len();
+                                        if len != 3 {
+                                            return Ok::<_, std::convert::Infallible>(
+                                                hyper::Response::builder()
+                                                    .status(404)
+                                                    .body(http_body_util::Full::<hyper::body::Bytes>::new(
+                                                        "404 Not Found".into(),
+                                                    ))
+                                                    .unwrap(),
+                                            );
+                                        }
+                                        let (service, lang) = (parts[1], parts[2]);
+                                        let code = if let Some(code) =
+                                            codes.get(&format!("code/{}/{}", service, lang))
+                                        {
+                                            code.to_string()
+                                        } else {
+                                            return Ok::<_, std::convert::Infallible>(
+                                                hyper::Response::builder()
+                                                    .status(404)
+                                                    .body(http_body_util::Full::<hyper::body::Bytes>::new(
+                                                        "404 Not Found".into(),
+                                                    ))
+                                                    .unwrap(),
+                                            );
+                                        };
+
+                                        return Ok::<_, std::convert::Infallible>(
+                                            hyper::Response::builder()
+                                                .status(200)
+                                                .header(
+                                                    hyper::http::header::CONTENT_TYPE,
+                                                    "text/javascript; charset=utf-8",
+                                                )
+                                                .body(http_body_util::Full::<hyper::body::Bytes>::new(code.into()))
+                                                .unwrap(),
+                                        );
+                                    }
+
+                                    #[cfg(feature = "doc")]
+                                    if path.starts_with("/doc") {
+                                        let parts: Vec<&str> = path
+                                            .trim_start_matches('/')
+                                            .trim_end_matches('/')
+                                            .split('/')
+                                            .collect();
+                                        let len = parts.len();
+                                        if len == 2 {
+                                            let code = if let Some(code) =
+                                                codes.get(&format!("doc/{}", parts[1]))
+                                            {
+                                                code.to_string()
+                                            } else {
+                                                return Ok::<_, std::convert::Infallible>(
+                                                    hyper::Response::builder()
+                                                        .status(404)
+                                                        .body(http_body_util::Full::<hyper::body::Bytes>::new(
+                                                            "404 Not Found".into(),
+                                                        ))
+                                                        .unwrap(),
+                                                );
+                                            };
+                                            return Ok::<_, std::convert::Infallible>(
+                                                hyper::Response::builder()
+                                                    .status(200)
+                                                    .header(
+                                                        hyper::http::header::CONTENT_TYPE,
+                                                        "application/json; charset=utf-8",
+                                                    )
+                                                    .body(http_body_util::Full::<hyper::body::Bytes>::new(code.into()))
+                                                    .unwrap(),
+                                            );
+                                        } else if len == 1 {
+                                            let code = format!(
+                                                r#"{{"services":[{}]}}"#,
+                                                services
+                                                    .iter()
+                                                    .map(|(n, d, c)| format!(
+                                                        r#"{{"name":"{}","desc":"{}","count":{}}}"#,
+                                                        n, d, c
+                                                    ))
+                                                    .collect::<Vec<String>>()
+                                                    .join(",")
+                                            );
+                                            return Ok::<_, std::convert::Infallible>(
+                                                hyper::Response::builder()
+                                                    .status(200)
+                                                    .header(
+                                                        hyper::http::header::CONTENT_TYPE,
+                                                        "application/json; charset=utf-8",
+                                                    )
+                                                    .body(http_body_util::Full::<hyper::body::Bytes>::new(code.into()))
+                                                    .unwrap(),
+                                            );
+                                        } else {
+                                            return Ok::<_, std::convert::Infallible>(
+                                                hyper::Response::builder()
+                                                    .status(404)
+                                                    .body(http_body_util::Full::<hyper::body::Bytes>::new(
+                                                        "404 Not Found".into(),
+                                                    ))
+                                                    .unwrap(),
+                                            );
+                                        }
+                                    } else {
+                                        static DIST_DIR: include_dir::Dir =
+                                            include_dir::include_dir!("$CARGO_MANIFEST_DIR/dist");
+
+                                        let path = req.uri().path().trim_start_matches('/');
+
+                                        let mut final_path = path;
+                                        if path.is_empty() || !DIST_DIR.get_file(path).is_some() {
+                                            final_path = "index.html";
+                                        }
+
+                                        let file = DIST_DIR.get_file(final_path);
+
+                                        if let Some(file) = file {
+                                            let mime = mime_guess::from_path(final_path)
+                                                .first_or_octet_stream();
+                                            return Ok::<_, std::convert::Infallible>(
+                                                hyper::Response::builder()
+                                                    .status(200)
+                                                    .header(
+                                                        hyper::http::header::CONTENT_TYPE,
+                                                        format!("{}; charset=utf-8", mime.as_ref()),
+                                                    )
+                                                    .body(http_body_util::Full::<hyper::body::Bytes>::new(
+                                                        hyper::body::Bytes::from(file.contents()),
+                                                    ))
+                                                    .unwrap(),
+                                            );
+                                        } else {
+                                            return Ok::<_, std::convert::Infallible>(
+                                                hyper::Response::builder()
+                                                    .status(404)
+                                                    .body(http_body_util::Full::<hyper::body::Bytes>::new(
+                                                        "404 Not Found".into(),
+                                                    ))
+                                                    .unwrap(),
+                                            );
+                                        }
+                                    }
+
+                                    #[cfg(all(feature = "code", not(feature = "doc")))]
+                                    return Ok::<_, std::convert::Infallible>(
+                                        hyper::Response::builder()
+                                            .status(404)
+                                            .body(http_body_util::Full::<hyper::body::Bytes>::new("404 Not Found".into()))
+                                            .unwrap(),
+                                    );
+                                } else {
+                                    return Ok::<_, std::convert::Infallible>(
+                                        hyper::Response::builder()
+                                            .status(405)
+                                            .body(http_body_util::Full::<hyper::body::Bytes>::new(
+                                                "405 Method Not Allowed".into(),
+                                            ))
+                                            .unwrap(),
+                                    );
+                                }
+
+                                #[cfg(any(not(feature = "code"), not(feature = "doc")))]
                                 return Ok::<_, std::convert::Infallible>(
                                     hyper::Response::builder()
                                         .status(404)
-                                        .body(http_body_util::Full::new("404 Not Found".into()))
+                                        .body(http_body_util::Full::<hyper::body::Bytes>::new("404 Not Found".into()))
                                         .unwrap(),
                                 );
                             }
@@ -805,147 +996,6 @@ where
                     }
                 });
             }
-
-            #[cfg(feature = "code")]
-            let app = app.route(
-                "/code/{service}/{lang}",
-                axum::routing::get(
-                    move |axum::Extension(codes): axum::Extension<
-                        std::collections::HashMap<String, String>,
-                    >,
-                          axum::extract::Path((service, lang)): axum::extract::Path<(
-                        String,
-                        String,
-                    )>| async move {
-                        let code =
-                            if let Some(code) = codes.get(&format!("code/{}/{}", service, lang)) {
-                                code.to_string()
-                            } else {
-                                return axum::response::Response::builder()
-                                    .status(404)
-                                    .body(http_body_util::Full::new(axum::body::Bytes::from(
-                                        "404 Not Found",
-                                    )))
-                                    .unwrap();
-                            };
-                        axum::response::Response::builder()
-                            .status(200)
-                            .header(
-                                axum::http::header::CONTENT_TYPE,
-                                "text/javascript; charset=utf-8",
-                            )
-                            .body(http_body_util::Full::new(axum::body::Bytes::from(code)))
-                            .unwrap()
-                    },
-                ),
-            );
-
-            #[cfg(feature = "doc")]
-            let app = app.route(
-                "/doc",
-                axum::routing::get(
-                    move |axum::Extension(services): axum::Extension<
-                        std::collections::HashSet<(String, String, usize)>,
-                    >| async move {
-                        let code = format!(
-                            r#"{{"services":[{}]}}"#,
-                            services
-                                .iter()
-                                .map(|(n, d, c)| format!(
-                                    r#"{{"name":"{}","desc":"{}","count":{}}}"#,
-                                    n, d, c
-                                ))
-                                .collect::<Vec<String>>()
-                                .join(",")
-                        );
-                        axum::response::Response::builder()
-                            .status(200)
-                            .header(
-                                axum::http::header::CONTENT_TYPE,
-                                "application/json; charset=utf-8",
-                            )
-                            .body(http_body_util::Full::new(axum::body::Bytes::from(code)))
-                            .unwrap()
-                    },
-                ),
-            );
-
-            #[cfg(feature = "doc")]
-            let app = app.route(
-                "/doc/{service}",
-                axum::routing::get(
-                    move |axum::Extension(codes): axum::Extension<
-                        std::collections::HashMap<String, String>,
-                    >,
-                          axum::extract::Path(service): axum::extract::Path<
-                        String
-                    >| async move {
-                        let code =
-                            if let Some(code) = codes.get(&format!("doc/{}", service)) {
-                                code.to_string()
-                            } else {
-                                return axum::response::Response::builder()
-                                    .status(404)
-                                    .body(http_body_util::Full::new(axum::body::Bytes::from(
-                                        "404 Not Found",
-                                    )))
-                                    .unwrap();
-                            };
-                        axum::response::Response::builder()
-                            .status(200)
-                            .header(
-                                axum::http::header::CONTENT_TYPE,
-                                "application/json; charset=utf-8",
-                            )
-                            .body(http_body_util::Full::new(axum::body::Bytes::from(code)))
-                            .unwrap()
-                    },
-                ),
-            );
-
-            #[cfg(feature = "doc")]
-            static DIST_DIR: include_dir::Dir =
-                include_dir::include_dir!("$CARGO_MANIFEST_DIR/dist");
-            #[cfg(feature = "doc")]
-            let app = app.fallback(|uri: axum::http::Uri| async move {
-                let path = uri.path().trim_start_matches('/').trim();
-                let path = if path.is_empty() { "index.html" } else { path };
-
-                let file = DIST_DIR
-                    .get_file(path)
-                    .or_else(|| DIST_DIR.get_file("index.html"));
-
-                if let Some(file) = file {
-                    let mime = mime_guess::from_path(path).first_or_octet_stream();
-                    axum::response::Response::builder()
-                        .status(axum::http::StatusCode::OK)
-                        .header("Content-Type", mime.as_ref())
-                        .body(http_body_util::Full::from(file.contents()))
-                        .unwrap()
-                } else {
-                    axum::response::Response::builder()
-                        .status(axum::http::StatusCode::NOT_FOUND)
-                        .body(http_body_util::Full::from("404 Not Found"))
-                        .unwrap()
-                }
-            });
-
-            // Attach shared state and CORS
-            let app = app.layer(axum::Extension((state, handlers)));
-            let app = app.layer(axum::Extension(Arc::clone(&self.middleware)));
-            #[cfg(feature = "code")]
-            let app = app.layer(axum::Extension(self.codes.clone()));
-            let app = app.layer(axum::Extension(self.services.clone()));
-            let app = app.layer(
-                tower_http::cors::CorsLayer::new()
-                    .allow_origin(tower_http::cors::AllowOrigin::any())
-                    .allow_methods(tower_http::cors::AllowMethods::any())
-                    .allow_headers(tower_http::cors::AllowHeaders::any()),
-            );
-
-            axum::serve(listener, app).await.unwrap();
-
-            Ok(())
         }
     }
 }
