@@ -14,8 +14,8 @@ categories = ["asynchronous", "network-programming", "web-programming"]
 rust-version = "1.90"
 
 [dependencies]
-# afast-macros = { version = "0.0.13"}
-afast-macros = { path = "../afast-macros" }
+afast-macros = { version = "0.0.13"}
+# afast-macros = { path = "../afast-macros" }
 backtrace = { version = "0.3", optional = true }
 futures-util = { version = "0.3", optional = true }
 http-body-util = { version = "0.1", features = ["full"], optional = true }
@@ -27,7 +27,7 @@ tokio = { version = "1.48", features = ["full"] }
 tokio-tungstenite = { version = "0.28", optional = true }
 
 [features]
-default = []
+default = ["http"]
 http = [
     "http-body-util",
     "hyper/server",
