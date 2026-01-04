@@ -96,6 +96,25 @@ async fn auth(_state: String, header: Header) -> Result<Header, Error> {
     Ok(header)
 }
 
+// async fn ws(
+//     _state: String,
+//     _header: Header,
+//     mut receiver: tokio::sync::mpsc::Receiver<Vec<u8>>,
+//     sender: tokio::sync::mpsc::Sender<Vec<u8>>,
+// ) -> Result<(), Error> {
+//     // 循环处理 receiver 中的消息，并通过 sender 发送响应
+//     while let Some(msg) = receiver.recv().await {
+//         let (req, _) = Req2::from_bytes(&msg).unwrap();
+//         let resp = Resp2 {
+//             id: req.id,
+//             name: "John".to_string(),
+//         };
+//         sender.send(resp.to_bytes()).await.unwrap();
+//     }
+
+//     Ok(())
+// }
+
 #[tokio::main]
 async fn main() {
     let state = "".to_string();
@@ -108,7 +127,7 @@ async fn main() {
         .serve(
             #[cfg(feature = "tcp")]
             &"127.0.0.1:8080",
-            #[cfg(any(feature = "http", feature = "ws"))]
+            #[cfg(any(feature = "http", feature = "ws", feature = "doc", feature = "js", feature = "ts"))]
             &"127.0.0.1:8081",
         )
         .await

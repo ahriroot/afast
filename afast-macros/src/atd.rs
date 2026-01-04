@@ -254,19 +254,11 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     wrapper_args.push(quote! { Vec<String> });
     wrapper_args.push(quote! {
-        Box<
-            dyn Fn(
-                #state_ty,
-                #header_ty,
-                &[u8],
-            ) -> std::pin::Pin<
-                Box<dyn std::future::Future<Output = Result<Vec<u8>, afast::Error>> + Send>
-            > + Send + Sync + 'static,
-        >
+        afast::Processor<#state_ty, #header_ty>
     });
     wrapper_returns.push(quote! {vec![#(#namespace.to_string()),*]});
     wrapper_returns.push(quote! {
-        Box::new(|state: #state_ty, header: #header_ty, req: &[u8]| {
+        afast::Processor::Handler(Box::new(|state: #state_ty, header: #header_ty, req: &[u8]| {
             let req = #req_ty::from_bytes(req);
             Box::pin(async move {
                 match req {
@@ -280,7 +272,7 @@ pub fn handler(attr: TokenStream, item: TokenStream) -> TokenStream {
                     Err(e) => return Err(e),
                 }
             })
-        })
+        }))
     });
 
     let expanded = quote! {

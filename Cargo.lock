@@ -19,9 +19,9 @@ checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 
 [[package]]
 name = "afast"
-version = "0.0.13"
+version = "0.0.14"
 dependencies = [
- "afast-macros 0.0.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "afast-macros",
  "backtrace",
  "futures-util",
  "http-body-util",
@@ -35,18 +35,7 @@ dependencies = [
 
 [[package]]
 name = "afast-macros"
-version = "0.0.13"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "afast-macros"
-version = "0.0.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "70f015846ffbe413cebeb8c8f736d1fbb773373a71fc1e658d23808ce65a0b7f"
+version = "0.0.14"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -144,7 +133,7 @@ checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
 
 [[package]]
 name = "example"
-version = "0.0.13"
+version = "0.0.14"
 dependencies = [
  "afast",
  "tokio",

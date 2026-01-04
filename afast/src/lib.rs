@@ -232,6 +232,26 @@ pub type Handler<T, H> = dyn Fn(
     > + Send
     + Sync;
 
+pub type Socket<T, H> = dyn Fn(
+        T,
+        H,
+        &[u8],
+        tokio::sync::mpsc::Receiver<Vec<u8>>,
+        tokio::sync::mpsc::Sender<Vec<u8>>,
+    )
+        -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), Error>> + Send + 'static>>
+    + Send
+    + Sync;
+
+pub enum Processor<T, H>
+where
+    T: Clone + Send + Sync + 'static,
+    H: AFastKind + AFastData,
+{
+    Handler(Box<Handler<T, H>>),
+    Socket(Box<Socket<T, H>>),
+}
+
 pub type Middleware<T, H> = dyn Fn(
         T,
         H,
@@ -268,7 +288,7 @@ where
     /// Namespace for this handler
     pub namespace: Vec<String>,
     /// Actual processing function
-    pub func: Box<Handler<T, H>>,
+    pub func: Processor<T, H>,
 }
 
 /// Core AFast service struct.
@@ -466,7 +486,14 @@ where
                             }
                         };
                         let h = header.to_bytes();
-                        let fut = (handler.func)(state.clone(), header, &body[size + 8..]);
+                        let fut = match &handler.func {
+                            Processor::Handler(func) => {
+                                func(state.clone(), header, &body[size + 8..])
+                            }
+                            Processor::Socket(_) => {
+                                panic!("Socket processor cannot be called in TCP handler");
+                            }
+                        };
                         let res = fut.await.unwrap();
 
                         // Build response: len + seq + id + response
@@ -672,11 +699,14 @@ where
                                                     }
                                                 };
                                                 let h = header.to_bytes();
-                                                let fut = (handler.func)(
-                                                    state.clone(),
-                                                    header,
-                                                    &body[size + 8..],
-                                                );
+                                                let fut = match &handler.func {
+                                                    Processor::Handler(func) => {
+                                                        func(state.clone(), header, &body[size + 8..])
+                                                    }
+                                                    Processor::Socket(_) => {
+                                                        panic!("Socket processor cannot be called in TCP handler");
+                                                    }
+                                                };
                                                 let res = fut.await.unwrap();
                                                 let mut final_res =
                                                     Vec::with_capacity(8 + res.len() + h.len());
@@ -765,8 +795,14 @@ where
                                         }
                                     };
                                     let h = header.to_bytes();
-                                    let fut =
-                                        (handler.func)(state.clone(), header, &body[size + 4..]);
+                                    let fut = match &handler.func {
+                                        Processor::Handler(func) => {
+                                            func(state.clone(), header, &body[size + 4..])
+                                        }
+                                        Processor::Socket(_) => {
+                                            panic!("Socket processor cannot be called in TCP handler");
+                                        }
+                                    };
                                     match fut.await {
                                         Ok(res) => {
                                             let mut final_res =
@@ -980,7 +1016,7 @@ where
                                     );
                                 }
 
-                                #[cfg(any(not(feature = "code"), not(feature = "doc")))]
+                                #[cfg(all(not(feature = "code"), not(feature = "doc")))]
                                 return Ok::<_, std::convert::Infallible>(
                                     hyper::Response::builder()
                                         .status(404)

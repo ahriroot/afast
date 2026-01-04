@@ -1,6 +1,6 @@
 [package]
 name = "afast"
-version = "0.0.13"
+version = "0.0.14"
 edition = "2024"
 authors = ["ahriknow <ahriknow@ahriknow.com>"]
 description = "AFast: high-performance async Rust web framework with HTTP, WS, TCP support, automatic client generation, validation, and documentation."
@@ -14,8 +14,8 @@ categories = ["asynchronous", "network-programming", "web-programming"]
 rust-version = "1.90"
 
 [dependencies]
-afast-macros = { version = "0.0.13"}
-# afast-macros = { path = "../afast-macros" }
+# afast-macros = { version = "0.0.14" }
+afast-macros = { path = "../afast-macros" }
 backtrace = { version = "0.3", optional = true }
 futures-util = { version = "0.3", optional = true }
 http-body-util = { version = "0.1", features = ["full"], optional = true }
@@ -48,5 +48,5 @@ tcp = []
 code = ["afast-macros/code", "http"]
 js = ["afast-macros/js", "code"]
 ts = ["afast-macros/ts", "code"]
-doc = ["afast-macros/doc", "code", "include_dir", "mime_guess", "js"]
+doc = ["http", "afast-macros/doc", "code", "include_dir", "mime_guess", "js"]
 trace = ["backtrace"]
